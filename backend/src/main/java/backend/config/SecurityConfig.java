@@ -30,7 +30,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/users", "/users/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/users", "/users/login", "/users/google").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users/pending-technicians").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/users/*/approve").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

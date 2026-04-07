@@ -12,11 +12,12 @@ public class LoginResponse {
     private String role;
     private String phone;
     private boolean active;
+    private boolean approved;
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
 
     public LoginResponse(String message, String token, Long id, String fullName, String email, String role, String phone,
-                         boolean active, LocalDateTime createdAt, LocalDateTime lastLogin) {
+                         boolean active, boolean approved, LocalDateTime createdAt, LocalDateTime lastLogin) {
         this.message = message;
         this.token = token;
         this.id = id;
@@ -25,6 +26,7 @@ public class LoginResponse {
         this.role = role;
         this.phone = phone;
         this.active = active;
+        this.approved = approved;
         this.createdAt = createdAt;
         this.lastLogin = lastLogin;
     }
@@ -59,6 +61,10 @@ public class LoginResponse {
 
     public boolean isActive() {
         return active;
+    }
+
+    public boolean isApproved() {
+        return approved;
     }
 
     public LocalDateTime getCreatedAt() {

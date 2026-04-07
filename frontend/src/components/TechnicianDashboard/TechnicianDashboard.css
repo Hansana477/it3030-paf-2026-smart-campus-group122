@@ -12,3 +12,55 @@
   margin: 0 auto;
   padding: 0 8px;
 }
+
+.tech-status-panel {
+  margin-top: 20px;
+}
+
+.tech-status-card {
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.tech-status-card h2 {
+  margin: 0 0 10px;
+  font-size: 1.5rem;
+}
+
+.tech-status-card p {
+  margin: 0;
+  line-height: 1.7;
+  color: #526172;
+}
+
+.tech-status-pending {
+  border-color: #f9d6a5;
+  background: #fffaf2;
+}
+
+.tech-status-pending h2 {
+  color: #b45309;
+}
+
+.tech-status-approved {
+  border-color: #bde8d9;
+  background: #f1fbf7;
+}
+
+.tech-status-approved h2 {
+  color: #0f766e;
+}
+
+.tech-status-message {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.tech-status-error {
+  background: #fdecec;
+  color: #a12626;
+}

@@ -62,6 +62,34 @@
   gap: 16px;
 }
 
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 24px 0 18px;
+  color: #6b7b8c;
+  font-size: 0.9rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(18, 52, 74, 0.12);
+}
+
+.google-signin-section {
+  display: grid;
+  gap: 12px;
+}
+
+.google-signin-button {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
 .login-field {
   display: grid;
   gap: 8px;
@@ -110,6 +138,16 @@
   box-shadow: 0 12px 24px rgba(15, 118, 110, 0.2);
 }
 
+.login-button-secondary {
+  background: #e6eef4;
+  color: #12344a;
+  box-shadow: none;
+}
+
+.login-button-secondary:hover:not(:disabled) {
+  box-shadow: none;
+}
+
 .login-button:disabled {
   opacity: 0.7;
   cursor: wait;
@@ -132,9 +170,91 @@
   color: #1d6b37;
 }
 
+.login-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 25, 34, 0.52);
+  backdrop-filter: blur(8px);
+}
+
+.login-role-modal {
+  width: min(100%, 520px);
+  padding: 28px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 30px 70px rgba(8, 25, 34, 0.24);
+}
+
+.login-role-modal h2 {
+  margin: 0 0 10px;
+  color: #12344a;
+  font-size: 1.8rem;
+}
+
+.login-role-email {
+  margin: -6px 0 18px;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.login-role-form {
+  display: grid;
+  gap: 14px;
+}
+
+.login-role-option {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  border: 1px solid #d6e1e8;
+  border-radius: 18px;
+  background: #f8fbfd;
+  cursor: pointer;
+}
+
+.login-role-option input {
+  margin-top: 4px;
+  accent-color: #0f766e;
+}
+
+.login-role-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.login-role-option strong {
+  color: #12344a;
+  font-size: 1rem;
+}
+
+.login-role-option small {
+  color: #587082;
+  line-height: 1.5;
+}
+
+.login-role-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
 @media (max-width: 640px) {
   .login-card {
     padding: 24px;
     border-radius: 20px;
+  }
+
+  .login-role-modal {
+    padding: 22px;
+    border-radius: 20px;
+  }
+
+  .login-role-actions {
+    flex-direction: column-reverse;
   }
 }

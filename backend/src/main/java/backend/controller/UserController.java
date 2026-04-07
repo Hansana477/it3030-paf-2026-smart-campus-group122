@@ -2,11 +2,15 @@ package backend.controller;
 
 import backend.dto.LoginRequest;
 import backend.dto.LoginResponse;
+import backend.dto.GoogleAuthRequest;
+import backend.dto.GoogleAuthResponse;
 import backend.exception.UserNotFoundException;
 import backend.model.UserModel;
 import backend.repository.UserRepository;
+import backend.security.GoogleTokenVerifierService;
 import backend.security.JwtService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")
@@ -33,11 +38,18 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final GoogleTokenVerifierService googleTokenVerifierService;
 
-    public UserController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public UserController(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            GoogleTokenVerifierService googleTokenVerifierService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.googleTokenVerifierService = googleTokenVerifierService;
     }
 
     @PostMapping
@@ -57,6 +69,7 @@ public class UserController {
         newUser.setEmail(normalizedEmail);
         newUser.setRole(normalizedRole);
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
+        newUser.setApproved(!"TECHNICIAN".equals(normalizedRole));
         return userRepository.save(newUser);
     }
 
@@ -87,23 +100,51 @@ public class UserController {
         UserModel loggedInUser = userRepository.findById(user.getId())
                 .orElseThrow(() -> new UserNotFoundException(user.getId()));
 
-        return new LoginResponse(
-                "Login successful",
-                jwtService.generateToken(loggedInUser),
-                loggedInUser.getId(),
-                loggedInUser.getFullName(),
-                loggedInUser.getEmail(),
-                loggedInUser.getRole(),
-                loggedInUser.getPhone(),
-                loggedInUser.isActive(),
-                loggedInUser.getCreatedAt(),
-                loggedInUser.getLastLogin()
-        );
+        return buildLoginResponse("Login successful", loggedInUser);
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<?> loginWithGoogle(@RequestBody GoogleAuthRequest googleAuthRequest) {
+        GoogleTokenVerifierService.GoogleUserProfile googleProfile =
+                googleTokenVerifierService.verify(googleAuthRequest.getCredential());
+
+        String email = normalizeEmail(googleProfile.getEmail());
+
+        UserModel user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            if (googleAuthRequest.getRole() == null || googleAuthRequest.getRole().isBlank()) {
+                return ResponseEntity.ok(new GoogleAuthResponse(
+                        "Select Student or Technician to finish Google sign-in.",
+                        true,
+                        googleProfile.getFullName(),
+                        email
+                ));
+            }
+
+            user = createGoogleUser(googleProfile, normalizeGoogleSignupRole(googleAuthRequest.getRole()));
+        }
+
+        if (!user.isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User account is inactive");
+        }
+
+        Long userId = user.getId();
+        userRepository.updateLastLogin(userId);
+
+        UserModel loggedInUser = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        return ResponseEntity.ok(buildLoginResponse("Login successful", loggedInUser));
     }
 
     @GetMapping
     public List<UserModel> getAllUsers() {
         return userRepository.findAll();
+    }
+
+    @GetMapping("/pending-technicians")
+    public List<UserModel> getPendingTechnicians() {
+        return userRepository.findByRoleAndApproved("TECHNICIAN", false);
     }
 
     @GetMapping("/{id}")
@@ -142,7 +183,11 @@ public class UserController {
                         user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
                     }
                     if (updatedUser.getRole() != null && !updatedUser.getRole().isBlank()) {
-                        user.setRole(normalizeRole(updatedUser.getRole()));
+                        String normalizedRole = normalizeRole(updatedUser.getRole());
+                        user.setRole(normalizedRole);
+                        if (!"TECHNICIAN".equals(normalizedRole)) {
+                            user.setApproved(true);
+                        }
                     }
                     user.setPhone(updatedUser.getPhone());
                     user.setActive(updatedUser.isActive());
@@ -166,8 +211,10 @@ public class UserController {
         }
 
         String normalizedRole = role.trim().toUpperCase();
-        if (!normalizedRole.equals("STUDENT") && !normalizedRole.equals("TECHNICIAN")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role must be STUDENT or TECHNICIAN");
+        if (!normalizedRole.equals("STUDENT")
+                && !normalizedRole.equals("TECHNICIAN")
+                && !normalizedRole.equals("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role must be STUDENT, TECHNICIAN, or ADMIN");
         }
 
         return normalizedRole;
@@ -195,6 +242,65 @@ public class UserController {
 
     private boolean isBcryptHash(String value) {
         return value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$");
+    }
+
+    private String normalizeGoogleSignupRole(String role) {
+        String normalizedRole = normalizeRole(role);
+        if (!"STUDENT".equals(normalizedRole) && !"TECHNICIAN".equals(normalizedRole)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Google sign-up role must be STUDENT or TECHNICIAN"
+            );
+        }
+
+        return normalizedRole;
+    }
+
+    private UserModel createGoogleUser(
+            GoogleTokenVerifierService.GoogleUserProfile googleProfile,
+            String normalizedRole
+    ) {
+        UserModel user = new UserModel();
+        user.setFullName(googleProfile.getFullName());
+        user.setEmail(normalizeEmail(googleProfile.getEmail()));
+        user.setPassword(passwordEncoder.encode(
+                "GOOGLE_AUTH_" + googleProfile.getSubject() + "_" + UUID.randomUUID()
+        ));
+        user.setRole(normalizedRole);
+        user.setPhone(null);
+        user.setActive(true);
+        user.setApproved(!"TECHNICIAN".equals(normalizedRole));
+        return userRepository.save(user);
+    }
+
+    private LoginResponse buildLoginResponse(String message, UserModel user) {
+        return new LoginResponse(
+                message,
+                jwtService.generateToken(user),
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getPhone(),
+                user.isActive(),
+                user.isApproved(),
+                user.getCreatedAt(),
+                user.getLastLogin()
+        );
+    }
+
+    @PatchMapping("/{id}/approve")
+    public UserModel approveTechnician(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    if (!"TECHNICIAN".equals(user.getRole())) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only technicians can be approved");
+                    }
+
+                    user.setApproved(true);
+                    return userRepository.save(user);
+                })
+                .orElseThrow(() -> new UserNotFoundException(id));
     }
 
     @PatchMapping("/{id}/last-login")

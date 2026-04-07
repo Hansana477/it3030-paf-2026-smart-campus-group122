@@ -31,6 +31,9 @@ public class UserModel {
     @Column(name = "is_active")
     private boolean isActive = true;
 
+    @Column(name = "is_approved")
+    private Boolean approved = Boolean.TRUE;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -48,7 +51,27 @@ public class UserModel {
         this.role = role;
         this.phone = phone;
         this.isActive = true;
+        this.approved = Boolean.TRUE;
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PrePersist
+    @PreUpdate
+    private void applyDefaults() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+
+        if (approved == null) {
+            approved = Boolean.TRUE;
+        }
+    }
+
+    @PostLoad
+    private void applyLegacyDefaults() {
+        if (approved == null) {
+            approved = Boolean.TRUE;
+        }
     }
 
     // Getters and Setters
@@ -72,6 +95,11 @@ public class UserModel {
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
+
+    public boolean isApproved() { return approved == null || approved; }
+    public Boolean getApproved() { return approved; }
+    public void setApproved(boolean approved) { this.approved = approved; }
+    public void setApproved(Boolean approved) { this.approved = approved; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

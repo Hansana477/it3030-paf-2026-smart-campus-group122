@@ -84,7 +84,11 @@ function Register() {
         throw new Error(message);
       }
 
-      setSuccessMessage(`User registered successfully with ID ${data.id}.`);
+      if (formData.role === "TECHNICIAN") {
+        setSuccessMessage("Technician registered successfully. Admin approval is required before full access.");
+      } else {
+        setSuccessMessage(`User registered successfully with ID ${data.id}.`);
+      }
       setFormData(initialForm);
     } catch (submitError) {
       setError(submitError.message || "Something went wrong.");
