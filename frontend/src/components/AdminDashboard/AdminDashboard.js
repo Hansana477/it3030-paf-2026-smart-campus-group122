@@ -8,6 +8,7 @@ function AdminDashboard() {
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
   const token = localStorage.getItem("token");
+  const [currentUser, setCurrentUser] = useState(user);
   const [pendingTechnicians, setPendingTechnicians] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -91,7 +92,8 @@ function AdminDashboard() {
         <Header
           title="Admin Dashboard"
           roleLabel="Admin Portal"
-          userName={user?.fullName || "Admin User"}
+          user={currentUser}
+          onUserUpdated={setCurrentUser}
           onLogout={handleLogout}
         />
 

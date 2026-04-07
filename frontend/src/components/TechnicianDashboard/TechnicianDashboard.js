@@ -55,7 +55,8 @@ function TechnicianDashboard() {
         <Header
           title="Technician Dashboard"
           roleLabel="Technician Portal"
-          userName={currentUser?.fullName || "Technician User"}
+          user={currentUser}
+          onUserUpdated={setCurrentUser}
           onLogout={handleLogout}
         />
 

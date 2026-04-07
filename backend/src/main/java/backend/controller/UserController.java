@@ -4,6 +4,7 @@ import backend.dto.LoginRequest;
 import backend.dto.LoginResponse;
 import backend.dto.GoogleAuthRequest;
 import backend.dto.GoogleAuthResponse;
+import backend.dto.ChangePasswordRequest;
 import backend.exception.UserNotFoundException;
 import backend.model.UserModel;
 import backend.repository.UserRepository;
@@ -301,6 +302,36 @@ public class UserController {
                     return userRepository.save(user);
                 })
                 .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    @PatchMapping("/{id}/password")
+    public Map<String, String> changePassword(@PathVariable Long id, @RequestBody ChangePasswordRequest request) {
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()
+                || request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Current password and new password are required"
+            );
+        }
+
+        if (request.getNewPassword().length() < 6) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "New password must be at least 6 characters long"
+            );
+        }
+
+        UserModel user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+
+        if (!passwordMatches(request.getCurrentPassword(), user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return Map.of("message", "Password changed successfully");
     }
 
     @PatchMapping("/{id}/last-login")
