@@ -1,0 +1,14 @@
+.tech-dashboard-page {
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.2), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(14, 116, 144, 0.24), transparent 32%),
+    linear-gradient(135deg, #effcfb 0%, #ecfeff 100%);
+}
+
+.tech-dashboard-shell {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+  padding: 0 8px;
+}

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import "./Register.css";
 
 const initialForm = {
@@ -100,6 +101,9 @@ function Register() {
           <h1>{selectedRole.title}</h1>
           <p className="register-subtitle">
             Select one role, complete the account details, and submit the registration to the backend.
+          </p>
+          <p className="register-switch-text">
+            Already have an account? <Link to="/login" className="register-switch-link">Sign in</Link>
           </p>
         </div>
 

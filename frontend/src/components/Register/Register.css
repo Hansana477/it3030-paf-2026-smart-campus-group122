@@ -41,6 +41,22 @@
   line-height: 1.6;
 }
 
+.register-switch-text {
+  margin: -8px 0 24px;
+  color: #516173;
+  font-size: 0.95rem;
+}
+
+.register-switch-link {
+  color: #b45309;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.register-switch-link:hover {
+  text-decoration: underline;
+}
+
 .register-form {
   display: grid;
   gap: 16px;

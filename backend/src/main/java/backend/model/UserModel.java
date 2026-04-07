@@ -1,5 +1,6 @@
 package backend.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -18,10 +19,11 @@ public class UserModel {
     private String email;
 
     @Column(name = "password", nullable = false)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Column(name = "role", nullable = false)
-    private String role; // ADMIN, CANTEEN_OWNER
+    private String role; // STUDENT, TECHNICIAN
 
     @Column(name = "phone")
     private String phone;
