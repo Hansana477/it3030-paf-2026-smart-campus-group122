@@ -1,0 +1,14 @@
+.dashboard-page {
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+  background:
+    radial-gradient(circle at top left, rgba(217, 119, 6, 0.22), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.16), transparent 32%),
+    linear-gradient(135deg, #fff7ed 0%, #eff6ff 100%);
+}
+
+.dashboard-shell {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+  padding: 0 8px;
+}
