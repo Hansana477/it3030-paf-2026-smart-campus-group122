@@ -35,6 +35,7 @@ import java.util.UUID;
 @CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/users")
 public class UserController {
+    private static final String STUDENT_EMAIL_SUFFIX = "@my.sliit.lk";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -69,6 +70,7 @@ public class UserController {
 
         newUser.setEmail(normalizedEmail);
         newUser.setRole(normalizedRole);
+        validateStudentEmailForRole(normalizedEmail, normalizedRole);
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
         newUser.setApproved(!"TECHNICIAN".equals(normalizedRole));
         return userRepository.save(newUser);
@@ -190,6 +192,7 @@ public class UserController {
                             user.setApproved(true);
                         }
                     }
+                    validateStudentEmailForRole(user.getEmail(), user.getRole());
                     user.setPhone(updatedUser.getPhone());
                     user.setActive(updatedUser.isActive());
                     user.setLastLogin(updatedUser.getLastLogin());
@@ -219,6 +222,15 @@ public class UserController {
         }
 
         return normalizedRole;
+    }
+
+    private void validateStudentEmailForRole(String normalizedEmail, String normalizedRole) {
+        if ("STUDENT".equals(normalizedRole) && !normalizedEmail.endsWith(STUDENT_EMAIL_SUFFIX)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Student email must end with @my.sliit.lk"
+            );
+        }
     }
 
     private boolean passwordMatches(String rawPassword, UserModel user) {
@@ -264,6 +276,7 @@ public class UserController {
         UserModel user = new UserModel();
         user.setFullName(googleProfile.getFullName());
         user.setEmail(normalizeEmail(googleProfile.getEmail()));
+        validateStudentEmailForRole(user.getEmail(), normalizedRole);
         user.setPassword(passwordEncoder.encode(
                 "GOOGLE_AUTH_" + googleProfile.getSubject() + "_" + UUID.randomUUID()
         ));
