@@ -16,6 +16,10 @@ function TechnicianDashboard() {
     navigate("/login");
   };
 
+  const handleOwnAccountDeleted = () => {
+    handleLogout();
+  };
+
   useEffect(() => {
     const loadTechnician = async () => {
       if (!user?.id || !token) {
@@ -56,6 +60,7 @@ function TechnicianDashboard() {
           roleLabel="Technician Portal"
           user={currentUser}
           onUserUpdated={setCurrentUser}
+          onDeleteAccount={handleOwnAccountDeleted}
           onLogout={handleLogout}
         />
 

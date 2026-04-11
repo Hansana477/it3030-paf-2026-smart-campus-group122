@@ -24,6 +24,11 @@ const roleOptions = [
 ];
 
 const studentEmailPattern = /^[A-Z0-9._%+-]+@my\.sliit\.lk$/i;
+const phonePattern = /^\d{10}$/;
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).+$/;
+const passwordHelpText =
+  "Password must include at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol.";
+const phoneHelpText = "Phone number must contain exactly 10 digits.";
 
 function Register() {
   const [formData, setFormData] = useState(initialForm);
@@ -35,9 +40,10 @@ function Register() {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    const nextValue = name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value;
     setFormData((current) => ({
       ...current,
-      [name]: value,
+      [name]: nextValue,
     }));
   };
 
@@ -59,8 +65,19 @@ function Register() {
     }
 
     const trimmedEmail = formData.email.trim().toLowerCase();
+    const trimmedPhone = formData.phone.trim();
     if (isStudent && !studentEmailPattern.test(trimmedEmail)) {
       setError("Student email must end with @my.sliit.lk.");
+      return;
+    }
+
+    if (trimmedPhone && !phonePattern.test(trimmedPhone)) {
+      setError(phoneHelpText);
+      return;
+    }
+
+    if (!passwordPattern.test(formData.password)) {
+      setError(passwordHelpText);
       return;
     }
 
@@ -77,7 +94,7 @@ function Register() {
           email: trimmedEmail,
           password: formData.password,
           role: formData.role,
-          phone: formData.phone.trim(),
+          phone: trimmedPhone,
         }),
       });
 
@@ -241,8 +258,12 @@ function Register() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="Enter phone number"
+                inputMode="numeric"
+                maxLength="10"
+                pattern={phonePattern.source}
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
               />
+              <p className="text-sm leading-6 text-slate-500">{phoneHelpText}</p>
             </label>
 
             <div className="grid gap-5 sm:grid-cols-2">
@@ -254,9 +275,12 @@ function Register() {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Enter password"
+                  minLength="6"
+                  pattern={passwordPattern.source}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
                   required
                 />
+                <p className="text-sm leading-6 text-slate-500">{passwordHelpText}</p>
               </label>
 
               <label className="grid gap-2">
@@ -267,6 +291,7 @@ function Register() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm password"
+                  minLength="6"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
                   required
                 />

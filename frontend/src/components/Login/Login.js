@@ -22,6 +22,9 @@ const initialForgotPasswordForm = {
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const inputClasses =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).+$/;
+const passwordHelpText =
+  "Password must include at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol.";
 
 function redirectToDashboard(role, navigate, setError) {
   if (role === "ADMIN") {
@@ -337,6 +340,12 @@ function Login() {
 
     if (forgotPasswordForm.newPassword !== forgotPasswordForm.confirmPassword) {
       setForgotPasswordError("New password and confirm password do not match.");
+      setIsForgotPasswordSubmitting(false);
+      return;
+    }
+
+    if (!passwordPattern.test(forgotPasswordForm.newPassword)) {
+      setForgotPasswordError(passwordHelpText);
       setIsForgotPasswordSubmitting(false);
       return;
     }
@@ -676,9 +685,11 @@ function Login() {
                       value={forgotPasswordForm.newPassword}
                       onChange={handleForgotPasswordChange}
                       minLength="6"
+                      pattern={passwordPattern.source}
                       className={inputClasses}
                       required
                     />
+                    <p className="text-sm leading-6 text-slate-500">{passwordHelpText}</p>
                   </label>
 
                   <label className="grid gap-2">

@@ -14,6 +14,10 @@ function StudentDashboard() {
     navigate("/login");
   };
 
+  const handleOwnAccountDeleted = () => {
+    handleLogout();
+  };
+
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -22,6 +26,7 @@ function StudentDashboard() {
           roleLabel="Student Portal"
           user={currentUser}
           onUserUpdated={setCurrentUser}
+          onDeleteAccount={handleOwnAccountDeleted}
           onLogout={handleLogout}
         />
 

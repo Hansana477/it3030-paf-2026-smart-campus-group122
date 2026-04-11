@@ -2,6 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../Header/Header";
 
+const adminInputClasses =
+  "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
+const phonePattern = /^\d{10}$/;
+const phoneHelpText = "Phone number must contain exactly 10 digits.";
+
 function AdminDashboard() {
   const navigate = useNavigate();
   const storedUser = localStorage.getItem("user");
@@ -13,11 +18,21 @@ function AdminDashboard() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [activeApprovalId, setActiveApprovalId] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [editError, setEditError] = useState("");
+  const [editSuccess, setEditSuccess] = useState("");
+  const [isSavingUser, setIsSavingUser] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const handleOwnAccountDeleted = () => {
+    handleLogout();
   };
 
   useEffect(() => {
@@ -111,6 +126,167 @@ function AdminDashboard() {
     }
   };
 
+  const openEditModal = (listedUser) => {
+    setEditingUser(listedUser);
+    setEditForm({
+      fullName: listedUser.fullName ?? "",
+      email: listedUser.email ?? "",
+      phone: listedUser.phone ?? "",
+      role: listedUser.role ?? "STUDENT",
+      active: Boolean(listedUser.active),
+      approved: Boolean(listedUser.approved),
+    });
+    setEditError("");
+    setEditSuccess("");
+  };
+
+  const closeEditModal = () => {
+    setEditingUser(null);
+    setEditForm(null);
+    setEditError("");
+    setEditSuccess("");
+  };
+
+  const handleEditFormChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setEditForm((current) => {
+      const nextForm = {
+        ...current,
+        [name]: type === "checkbox"
+          ? checked
+          : name === "phone"
+            ? value.replace(/\D/g, "").slice(0, 10)
+            : value,
+      };
+
+      if (name === "role" && value !== "TECHNICIAN") {
+        nextForm.approved = true;
+      }
+
+      return nextForm;
+    });
+  };
+
+  const handleSaveUser = async (event) => {
+    event.preventDefault();
+
+    if (!editingUser || !editForm || !token) {
+      setEditError("User details are not available.");
+      return;
+    }
+
+    setIsSavingUser(true);
+    setEditError("");
+    setEditSuccess("");
+
+    try {
+      const trimmedPhone = editForm.phone.trim();
+      if (trimmedPhone && !phonePattern.test(trimmedPhone)) {
+        throw new Error(phoneHelpText);
+      }
+
+      const response = await fetch(`http://localhost:8080/users/${editingUser.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          fullName: editForm.fullName.trim(),
+          email: editForm.email.trim(),
+          phone: trimmedPhone,
+          role: editForm.role,
+          active: editForm.active,
+          approved: editForm.role === "TECHNICIAN" ? editForm.approved : true,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = data?.message || data?.error || "Failed to update user.";
+        throw new Error(message);
+      }
+
+      setAllUsers((current) =>
+        current.map((existingUser) =>
+          existingUser.id === data.id
+            ? {
+                ...existingUser,
+                ...data,
+              }
+            : existingUser
+        )
+      );
+      setPendingTechnicians((current) => {
+        const nextPending = current.filter((technician) => technician.id !== data.id);
+        if (data.role === "TECHNICIAN" && !data.approved) {
+          nextPending.push(data);
+        }
+        return nextPending;
+      });
+      if (currentUser?.id === data.id) {
+        setCurrentUser((current) => ({
+          ...current,
+          ...data,
+        }));
+        localStorage.setItem("user", JSON.stringify({
+          ...JSON.parse(localStorage.getItem("user") || "{}"),
+          ...data,
+        }));
+      }
+      setEditSuccess("User updated successfully.");
+    } catch (saveError) {
+      setEditError(saveError.message || "Something went wrong.");
+    } finally {
+      setIsSavingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (listedUser) => {
+    if (!token) {
+      setError("Missing login token.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete ${listedUser.fullName}'s account? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingUserId(listedUser.id);
+    setError("");
+
+    try {
+      const response = await fetch(`http://localhost:8080/users/${listedUser.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = data?.message || data?.error || "Failed to delete user.";
+        throw new Error(message);
+      }
+
+      setAllUsers((current) => current.filter((existingUser) => existingUser.id !== listedUser.id));
+      setPendingTechnicians((current) => current.filter((technician) => technician.id !== listedUser.id));
+
+      if (editingUser?.id === listedUser.id) {
+        closeEditModal();
+      }
+
+      if (currentUser?.id === listedUser.id) {
+        handleLogout();
+      }
+    } catch (deleteError) {
+      setError(deleteError.message || "Something went wrong.");
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   const totalUsers = allUsers.length;
   const studentCount = allUsers.filter((existingUser) => existingUser.role === "STUDENT").length;
   const technicianCount = allUsers.filter((existingUser) => existingUser.role === "TECHNICIAN").length;
@@ -125,6 +301,7 @@ function AdminDashboard() {
           roleLabel="Admin Portal"
           user={currentUser}
           onUserUpdated={setCurrentUser}
+          onDeleteAccount={handleOwnAccountDeleted}
           onLogout={handleLogout}
         />
 
@@ -258,6 +435,7 @@ function AdminDashboard() {
                   <th className="px-4 py-4">Phone</th>
                   <th className="px-4 py-4">Status</th>
                   <th className="px-4 py-4">Approval</th>
+                  <th className="px-4 py-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
@@ -295,6 +473,25 @@ function AdminDashboard() {
                         {listedUser.approved ? "Approved" : "Pending"}
                       </span>
                     </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary transition hover:border-accent"
+                          onClick={() => openEditModal(listedUser)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-red-600 transition hover:bg-red-100 disabled:cursor-wait disabled:opacity-70"
+                          onClick={() => handleDeleteUser(listedUser)}
+                          disabled={deletingUserId === listedUser.id}
+                        >
+                          {deletingUserId === listedUser.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -307,6 +504,161 @@ function AdminDashboard() {
             </p>
           ) : null}
         </section>
+
+        {editingUser && editForm ? (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-primary/20 px-4 py-6 backdrop-blur-sm" role="presentation">
+            <section
+              className="mx-auto w-full max-w-3xl rounded-[32px] border border-white/70 bg-white/95 p-6 shadow-[0_30px_90px_rgba(15,23,42,0.18)] sm:p-8"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-user-title"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">User Management</p>
+                  <h2 id="edit-user-title" className="mt-3 text-3xl font-extrabold text-primary">
+                    Edit user
+                  </h2>
+                  <p className="mt-2 text-base leading-7 text-slate-500">
+                    Update user details, role, access status, and approval state.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-semibold text-primary transition hover:border-slate-300"
+                  onClick={closeEditModal}
+                  aria-label="Close edit user dialog"
+                >
+                  x
+                </button>
+              </div>
+
+              <form className="mt-6 grid gap-5" onSubmit={handleSaveUser}>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <label className="grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Full name</span>
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={editForm.fullName}
+                      onChange={handleEditFormChange}
+                      className={adminInputClasses}
+                      required
+                    />
+                  </label>
+
+                  <label className="grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Email</span>
+                    <input
+                      type="email"
+                      name="email"
+                      value={editForm.email}
+                      onChange={handleEditFormChange}
+                      className={adminInputClasses}
+                      required
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <label className="grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Phone</span>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={editForm.phone}
+                      onChange={handleEditFormChange}
+                      inputMode="numeric"
+                      maxLength="10"
+                      pattern={phonePattern.source}
+                      className={adminInputClasses}
+                    />
+                    <p className="text-sm leading-6 text-slate-500">{phoneHelpText}</p>
+                  </label>
+
+                  <label className="grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Role</span>
+                    <select
+                      name="role"
+                      value={editForm.role}
+                      onChange={handleEditFormChange}
+                      className={adminInputClasses}
+                    >
+                      <option value="STUDENT">Student</option>
+                      <option value="TECHNICIAN">Technician</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      name="active"
+                      checked={editForm.active}
+                      onChange={handleEditFormChange}
+                      className="h-4 w-4 rounded border-slate-300 text-accent focus:ring-accent"
+                    />
+                    <span className="text-sm font-semibold text-primary">Active account</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      name="approved"
+                      checked={editForm.role === "TECHNICIAN" ? editForm.approved : true}
+                      onChange={handleEditFormChange}
+                      disabled={editForm.role !== "TECHNICIAN"}
+                      className="h-4 w-4 rounded border-slate-300 text-accent focus:ring-accent disabled:opacity-50"
+                    />
+                    <span className="text-sm font-semibold text-primary">
+                      {editForm.role === "TECHNICIAN" ? "Technician approved" : "Approval not required"}
+                    </span>
+                  </label>
+                </div>
+
+                {editError ? (
+                  <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {editError}
+                  </p>
+                ) : null}
+                {editSuccess ? (
+                  <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {editSuccess}
+                  </p>
+                ) : null}
+
+                <div className="mt-3 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-5 py-3.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-wait disabled:opacity-70"
+                    onClick={() => handleDeleteUser(editingUser)}
+                    disabled={deletingUserId === editingUser.id}
+                  >
+                    {deletingUserId === editingUser.id ? "Deleting..." : "Delete user"}
+                  </button>
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-primary transition hover:border-slate-300"
+                      onClick={closeEditModal}
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
+                      disabled={isSavingUser}
+                    >
+                      {isSavingUser ? "Saving..." : "Save changes"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </section>
+          </div>
+        ) : null}
       </section>
     </main>
   );

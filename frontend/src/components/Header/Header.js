@@ -65,8 +65,13 @@ function formatDateTime(value) {
 
 const fieldClasses =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
+const phonePattern = /^\d{10}$/;
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).+$/;
+const phoneHelpText = "Phone number must contain exactly 10 digits.";
+const passwordHelpText =
+  "Password must include at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol.";
 
-function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
+function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccount }) {
   const [profileUser, setProfileUser] = useState(createInitialProfile(user));
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState(createInitialProfile(user));
@@ -77,6 +82,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -106,7 +112,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
     const { name, value } = event.target;
     setProfileForm((current) => ({
       ...current,
-      [name]: value,
+      [name]: name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value,
     }));
   };
 
@@ -137,6 +143,11 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
     setProfileSuccess("");
 
     try {
+      const trimmedPhone = profileForm.phone.trim();
+      if (trimmedPhone && !phonePattern.test(trimmedPhone)) {
+        throw new Error(phoneHelpText);
+      }
+
       const response = await fetch(`http://localhost:8080/users/${profileUser.id}`, {
         method: "PUT",
         headers: {
@@ -146,7 +157,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
         body: JSON.stringify({
           fullName: profileForm.fullName.trim(),
           email: profileUser.email,
-          phone: profileForm.phone.trim(),
+          phone: trimmedPhone,
           role: profileUser.role,
           active: profileUser.active,
           approved: profileUser.approved,
@@ -192,6 +203,11 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
       return;
     }
 
+    if (!passwordPattern.test(passwordForm.newPassword)) {
+      setPasswordError(passwordHelpText);
+      return;
+    }
+
     const token = localStorage.getItem("token");
     if (!token) {
       setPasswordError("Missing login token.");
@@ -231,6 +247,56 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
       setPasswordError(changeError.message || "Something went wrong.");
     } finally {
       setIsChangingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!profileUser.id) {
+      setProfileError("User details are not available.");
+      return;
+    }
+
+    const confirmed = window.confirm("Are you sure you want to delete your account? This cannot be undone.");
+    if (!confirmed) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setProfileError("Missing login token.");
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setProfileError("");
+    setProfileSuccess("");
+
+    try {
+      const response = await fetch(`http://localhost:8080/users/${profileUser.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = data?.message || data?.error || "Failed to delete account.";
+        throw new Error(message);
+      }
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setIsProfileOpen(false);
+      if (onDeleteAccount) {
+        onDeleteAccount(profileUser);
+      } else {
+        onLogout?.();
+      }
+    } catch (deleteError) {
+      setProfileError(deleteError.message || "Something went wrong.");
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -275,12 +341,12 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
       {isProfileOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-primary/20 px-4 py-6 backdrop-blur-sm" role="presentation">
           <section
-            className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-[36px] border border-white/70 bg-white/95 shadow-[0_32px_90px_rgba(15,23,42,0.18)]"
+            className="mx-auto flex w-full max-w-5xl flex-col rounded-[36px] border border-white/70 bg-white/95 shadow-[0_32px_90px_rgba(15,23,42,0.18)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="profile-title"
           >
-            <div className="relative min-h-[150px] bg-primary">
+            <div className="relative min-h-[160px] overflow-hidden rounded-t-[36px] bg-primary">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(6,182,212,0.32),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.22),transparent_28%)]" />
               <button
                 type="button"
@@ -292,15 +358,15 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
               </button>
             </div>
 
-            <div className="max-h-[calc(100vh-48px)] overflow-y-auto px-6 pb-8 sm:px-8">
-              <div className="-mt-16 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <div className="max-h-[calc(100vh-48px)] overflow-y-auto px-6 pb-8 pt-6 sm:px-8 sm:pt-8">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                   <div className="inline-flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-primary via-accent to-secondary text-4xl font-bold text-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
                     {getInitials(profileUser.fullName)}
                   </div>
 
                   <div>
-                    <p className="mt-3 text-sm font-semibold uppercase tracking-[0.32em] text-accent sm:mt-0">Profile</p>
+                    <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Profile</p>
                     <h2 id="profile-title" className="mt-2 text-4xl font-extrabold text-primary">
                       {profileUser.fullName || "User profile"}
                     </h2>
@@ -374,8 +440,12 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
                       value={profileForm.phone}
                       onChange={handleProfileChange}
                       placeholder="Add phone number"
+                      inputMode="numeric"
+                      maxLength="10"
+                      pattern={phonePattern.source}
                       className={fieldClasses}
                     />
+                    <p className="text-sm leading-6 text-slate-500">{phoneHelpText}</p>
                   </label>
 
                   {profileError ? (
@@ -389,7 +459,15 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
                     </p>
                   ) : null}
 
-                  <div className="mt-6 flex justify-end">
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-5 py-3.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-wait disabled:opacity-70"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeletingAccount}
+                    >
+                      {isDeletingAccount ? "Deleting..." : "Delete my account"}
+                    </button>
                     <button
                       type="submit"
                       className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
@@ -426,9 +504,11 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
                       value={passwordForm.newPassword}
                       onChange={handlePasswordChange}
                       minLength="6"
+                      pattern={passwordPattern.source}
                       className={fieldClasses}
                       required
                     />
+                    <p className="text-sm leading-6 text-slate-500">{passwordHelpText}</p>
                   </label>
 
                   <label className="mt-5 grid gap-2">
