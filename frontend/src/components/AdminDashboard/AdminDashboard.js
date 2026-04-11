@@ -8,6 +8,7 @@ function AdminDashboard() {
   const user = storedUser ? JSON.parse(storedUser) : null;
   const token = localStorage.getItem("token");
   const [currentUser, setCurrentUser] = useState(user);
+  const [allUsers, setAllUsers] = useState([]);
   const [pendingTechnicians, setPendingTechnicians] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -20,7 +21,7 @@ function AdminDashboard() {
   };
 
   useEffect(() => {
-    const loadPendingTechnicians = async () => {
+    const loadDashboardData = async () => {
       if (!token) {
         setError("Missing login token.");
         setIsLoading(false);
@@ -31,19 +32,34 @@ function AdminDashboard() {
       setError("");
 
       try {
-        const response = await fetch("http://localhost:8080/users/pending-technicians", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [usersResponse, pendingResponse] = await Promise.all([
+          fetch("http://localhost:8080/users", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch("http://localhost:8080/users/pending-technicians", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+        ]);
 
-        const data = await response.json().catch(() => []);
-        if (!response.ok) {
-          const message = data?.message || data?.error || "Failed to load pending technicians.";
+        const usersData = await usersResponse.json().catch(() => []);
+        const pendingData = await pendingResponse.json().catch(() => []);
+
+        if (!usersResponse.ok) {
+          const message = usersData?.message || usersData?.error || "Failed to load users.";
           throw new Error(message);
         }
 
-        setPendingTechnicians(Array.isArray(data) ? data : []);
+        if (!pendingResponse.ok) {
+          const message = pendingData?.message || pendingData?.error || "Failed to load pending technicians.";
+          throw new Error(message);
+        }
+
+        setAllUsers(Array.isArray(usersData) ? usersData : []);
+        setPendingTechnicians(Array.isArray(pendingData) ? pendingData : []);
       } catch (loadError) {
         setError(loadError.message || "Something went wrong.");
       } finally {
@@ -51,7 +67,7 @@ function AdminDashboard() {
       }
     };
 
-    loadPendingTechnicians();
+    loadDashboardData();
   }, [token]);
 
   const approveTechnician = async (userId) => {
@@ -78,12 +94,28 @@ function AdminDashboard() {
       }
 
       setPendingTechnicians((current) => current.filter((technician) => technician.id !== userId));
+      setAllUsers((current) =>
+        current.map((existingUser) =>
+          existingUser.id === userId
+            ? {
+                ...existingUser,
+                ...data,
+              }
+            : existingUser
+        )
+      );
     } catch (approveError) {
       setError(approveError.message || "Something went wrong.");
     } finally {
       setActiveApprovalId(null);
     }
   };
+
+  const totalUsers = allUsers.length;
+  const studentCount = allUsers.filter((existingUser) => existingUser.role === "STUDENT").length;
+  const technicianCount = allUsers.filter((existingUser) => existingUser.role === "TECHNICIAN").length;
+  const adminCount = allUsers.filter((existingUser) => existingUser.role === "ADMIN").length;
+  const activeUserCount = allUsers.filter((existingUser) => existingUser.active).length;
 
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
@@ -163,29 +195,117 @@ function AdminDashboard() {
           </article>
 
           <article className="rounded-[30px] border border-primary/10 bg-primary p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Admin Notes</p>
-            <h3 className="mt-4 text-3xl font-extrabold">Keep the technician space trusted</h3>
+            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">User Counts</p>
+            <h3 className="mt-4 text-3xl font-extrabold">System overview at a glance</h3>
             <div className="mt-6 grid gap-4">
               <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Check identity</p>
-                <p className="mt-3 text-sm leading-7 text-slate-200">
-                  Review each registration carefully before granting technician access to issue handling workflows.
-                </p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Total users</p>
+                <p className="mt-3 text-4xl font-extrabold text-white">{totalUsers}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Students</p>
+                  <p className="mt-3 text-3xl font-bold text-white">{studentCount}</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Technicians</p>
+                  <p className="mt-3 text-3xl font-bold text-white">{technicianCount}</p>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Admins</p>
+                  <p className="mt-3 text-3xl font-bold text-white">{adminCount}</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Active users</p>
+                  <p className="mt-3 text-3xl font-bold text-white">{activeUserCount}</p>
+                </div>
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Approval effect</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Pending technicians</p>
                 <p className="mt-3 text-sm leading-7 text-slate-200">
-                  Once approved, the user can enter the technician dashboard immediately using their existing account.
-                </p>
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Current state</p>
-                <p className="mt-3 text-sm leading-7 text-slate-200">
-                  Pending requests are surfaced here so admin review stays fast, visible, and centralized.
+                  {pendingTechnicians.length} technician account(s) are still waiting for admin approval.
                 </p>
               </div>
             </div>
           </article>
+        </section>
+
+        <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">User Directory</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-primary">All registered users</h2>
+              <p className="mt-2 text-base leading-7 text-slate-500">
+                View the full system user list with role, status, approval state, and contact details.
+              </p>
+            </div>
+            <div className="rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-sm text-slate-500">
+              Total records:
+              {" "}
+              <span className="font-semibold text-primary">{totalUsers}</span>
+            </div>
+          </div>
+
+          <div className="mt-6 overflow-x-auto rounded-[24px] border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200 bg-white">
+              <thead className="bg-slate-50/80">
+                <tr className="text-left text-sm font-semibold text-slate-500">
+                  <th className="px-4 py-4">Name</th>
+                  <th className="px-4 py-4">Email</th>
+                  <th className="px-4 py-4">Role</th>
+                  <th className="px-4 py-4">Phone</th>
+                  <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4">Approval</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
+                {allUsers.map((listedUser) => (
+                  <tr key={listedUser.id} className="align-top">
+                    <td className="px-4 py-4">
+                      <div className="font-semibold text-primary">{listedUser.fullName}</div>
+                    </td>
+                    <td className="px-4 py-4">{listedUser.email}</td>
+                    <td className="px-4 py-4">
+                      <span className="inline-flex rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                        {listedUser.role}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">{listedUser.phone || "Not provided"}</td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                          listedUser.active
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {listedUser.active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                          listedUser.approved
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {listedUser.approved ? "Approved" : "Pending"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!isLoading && !allUsers.length ? (
+            <p className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+              No users found in the system yet.
+            </p>
+          ) : null}
         </section>
       </section>
     </main>

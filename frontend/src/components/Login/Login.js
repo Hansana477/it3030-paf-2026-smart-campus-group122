@@ -12,6 +12,13 @@ const initialGoogleSignup = {
   fullName: "",
 };
 
+const initialForgotPasswordForm = {
+  email: "",
+  code: "",
+  newPassword: "",
+  confirmPassword: "",
+};
+
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const inputClasses =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
@@ -78,6 +85,12 @@ function Login() {
   const [googleSignupData, setGoogleSignupData] = useState(initialGoogleSignup);
   const [selectedGoogleRole, setSelectedGoogleRole] = useState("STUDENT");
   const [showRolePicker, setShowRolePicker] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordStep, setForgotPasswordStep] = useState("request");
+  const [forgotPasswordForm, setForgotPasswordForm] = useState(initialForgotPasswordForm);
+  const [forgotPasswordError, setForgotPasswordError] = useState("");
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState("");
+  const [isForgotPasswordSubmitting, setIsForgotPasswordSubmitting] = useState(false);
 
   const completeGoogleLogin = async (credential, role = null) => {
     const response = await fetch("http://localhost:8080/users/google", {
@@ -202,6 +215,24 @@ function Login() {
     }));
   };
 
+  const resetForgotPasswordState = (email = "") => {
+    setForgotPasswordForm({
+      ...initialForgotPasswordForm,
+      email,
+    });
+    setForgotPasswordStep("request");
+    setForgotPasswordError("");
+    setForgotPasswordSuccess("");
+  };
+
+  const handleForgotPasswordChange = (event) => {
+    const { name, value } = event.target;
+    setForgotPasswordForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -259,6 +290,91 @@ function Login() {
       setError(submitError.message || "Google sign-in failed.");
     } finally {
       setIsGoogleSubmitting(false);
+    }
+  };
+
+  const handleForgotPasswordRequest = async (event) => {
+    event.preventDefault();
+    setIsForgotPasswordSubmitting(true);
+    setForgotPasswordError("");
+    setForgotPasswordSuccess("");
+
+    try {
+      const response = await fetch("http://localhost:8080/users/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: forgotPasswordForm.email.trim(),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          data?.message ||
+          data?.error ||
+          data?.["error Message"] ||
+          "Failed to send reset code.";
+        throw new Error(message);
+      }
+
+      setForgotPasswordStep("reset");
+      setForgotPasswordSuccess(data?.message || "Reset code sent. Check your email.");
+    } catch (submitError) {
+      setForgotPasswordError(submitError.message || "Something went wrong.");
+    } finally {
+      setIsForgotPasswordSubmitting(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async (event) => {
+    event.preventDefault();
+    setIsForgotPasswordSubmitting(true);
+    setForgotPasswordError("");
+    setForgotPasswordSuccess("");
+
+    if (forgotPasswordForm.newPassword !== forgotPasswordForm.confirmPassword) {
+      setForgotPasswordError("New password and confirm password do not match.");
+      setIsForgotPasswordSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:8080/users/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: forgotPasswordForm.email.trim(),
+          code: forgotPasswordForm.code.trim(),
+          newPassword: forgotPasswordForm.newPassword,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          data?.message ||
+          data?.error ||
+          data?.["error Message"] ||
+          "Failed to reset password.";
+        throw new Error(message);
+      }
+
+      setShowForgotPassword(false);
+      setSuccessMessage(data?.message || "Password reset successful. Please sign in.");
+      setFormData((current) => ({
+        ...current,
+        email: forgotPasswordForm.email.trim(),
+      }));
+      resetForgotPasswordState(forgotPasswordForm.email.trim());
+    } catch (submitError) {
+      setForgotPasswordError(submitError.message || "Something went wrong.");
+    } finally {
+      setIsForgotPasswordSubmitting(false);
     }
   };
 
@@ -361,6 +477,19 @@ function Login() {
                 required
               />
             </label>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="text-sm font-semibold text-accent transition hover:text-primary"
+                onClick={() => {
+                  resetForgotPasswordState(formData.email.trim());
+                  setShowForgotPassword(true);
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
 
             {error ? (
               <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -483,6 +612,137 @@ function Login() {
                   disabled={isGoogleSubmitting}
                 >
                   {isGoogleSubmitting ? "Finishing..." : "Continue"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {showForgotPassword ? (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-primary/20 px-4 py-6 backdrop-blur-sm" role="presentation">
+          <section
+            className="mx-auto w-full max-w-2xl rounded-[32px] border border-white/70 bg-white/95 p-6 shadow-[0_30px_90px_rgba(15,23,42,0.18)] sm:p-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="forgot-password-title"
+          >
+            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Account Recovery</p>
+            <h2 id="forgot-password-title" className="mt-4 text-3xl font-extrabold text-primary">
+              {forgotPasswordStep === "request" ? "Forgot password" : "Reset your password"}
+            </h2>
+            <p className="mt-3 max-w-xl text-base leading-7 text-slate-500">
+              {forgotPasswordStep === "request"
+                ? "Enter your email address and we will send a reset code to your inbox."
+                : "Enter the reset code from your email and choose a new password."}
+            </p>
+
+            <form
+              className="mt-6 grid gap-5"
+              onSubmit={forgotPasswordStep === "request" ? handleForgotPasswordRequest : handleForgotPasswordReset}
+            >
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-primary">Email</span>
+                <input
+                  type="email"
+                  name="email"
+                  value={forgotPasswordForm.email}
+                  onChange={handleForgotPasswordChange}
+                  className={inputClasses}
+                  required
+                />
+              </label>
+
+              {forgotPasswordStep === "reset" ? (
+                <>
+                  <label className="grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Reset code</span>
+                    <input
+                      type="text"
+                      name="code"
+                      value={forgotPasswordForm.code}
+                      onChange={handleForgotPasswordChange}
+                      placeholder="Enter the code from your email"
+                      className={inputClasses}
+                      required
+                    />
+                  </label>
+
+                  <label className="grid gap-2">
+                    <span className="text-sm font-semibold text-primary">New password</span>
+                    <input
+                      type="password"
+                      name="newPassword"
+                      value={forgotPasswordForm.newPassword}
+                      onChange={handleForgotPasswordChange}
+                      minLength="6"
+                      className={inputClasses}
+                      required
+                    />
+                  </label>
+
+                  <label className="grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Confirm new password</span>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={forgotPasswordForm.confirmPassword}
+                      onChange={handleForgotPasswordChange}
+                      minLength="6"
+                      className={inputClasses}
+                      required
+                    />
+                  </label>
+                </>
+              ) : null}
+
+              {forgotPasswordError ? (
+                <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {forgotPasswordError}
+                </p>
+              ) : null}
+              {forgotPasswordSuccess ? (
+                <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {forgotPasswordSuccess}
+                </p>
+              ) : null}
+
+              <div className="mt-3 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                {forgotPasswordStep === "reset" ? (
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-primary transition hover:border-slate-300"
+                    onClick={() => {
+                      setForgotPasswordStep("request");
+                      setForgotPasswordError("");
+                      setForgotPasswordSuccess("");
+                    }}
+                  >
+                    Back
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-primary transition hover:border-slate-300"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    resetForgotPasswordState(formData.email.trim());
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
+                  disabled={isForgotPasswordSubmitting}
+                >
+                  {isForgotPasswordSubmitting
+                    ? forgotPasswordStep === "request"
+                      ? "Sending..."
+                      : "Resetting..."
+                    : forgotPasswordStep === "request"
+                      ? "Send reset code"
+                      : "Reset password"}
                 </button>
               </div>
             </form>

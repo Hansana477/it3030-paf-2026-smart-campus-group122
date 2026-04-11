@@ -5,6 +5,8 @@ import backend.dto.LoginResponse;
 import backend.dto.GoogleAuthRequest;
 import backend.dto.GoogleAuthResponse;
 import backend.dto.ChangePasswordRequest;
+import backend.dto.ForgotPasswordRequest;
+import backend.dto.ResetPasswordRequest;
 import backend.exception.UserNotFoundException;
 import backend.model.UserModel;
 import backend.repository.UserRepository;
@@ -28,6 +30,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +41,8 @@ import java.util.UUID;
 @RequestMapping("/users")
 public class UserController {
     private static final String STUDENT_EMAIL_SUFFIX = "@my.sliit.lk";
+    private static final int RESET_CODE_EXPIRY_MINUTES = 15;
+    private static final SecureRandom RESET_CODE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -353,9 +359,64 @@ public class UserController {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        clearPasswordResetState(user);
         userRepository.save(user);
 
         return Map.of("message", "Password changed successfully");
+    }
+
+    @PostMapping("/forgot-password")
+    public Map<String, String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        String email = normalizeEmail(request.getEmail());
+
+        userRepository.findByEmail(email).ifPresent(user -> {
+            String resetCode = generateResetCode();
+            user.setPasswordResetCode(resetCode);
+            user.setPasswordResetExpiry(LocalDateTime.now().plusMinutes(RESET_CODE_EXPIRY_MINUTES));
+            userRepository.save(user);
+            emailNotificationService.sendPasswordResetEmail(user, resetCode);
+        });
+
+        return Map.of("message", "If an account exists for that email, a password reset code has been sent.");
+    }
+
+    @PostMapping("/reset-password")
+    public Map<String, String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        if (request.getCode() == null || request.getCode().isBlank()
+                || request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Email, reset code, and new password are required"
+            );
+        }
+
+        if (request.getNewPassword().length() < 6) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "New password must be at least 6 characters long"
+            );
+        }
+
+        String email = normalizeEmail(request.getEmail());
+        String resetCode = request.getCode().trim();
+
+        UserModel user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid or expired reset code"
+                ));
+
+        if (!resetCode.equals(user.getPasswordResetCode())
+                || user.getPasswordResetExpiry() == null
+                || user.getPasswordResetExpiry().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired reset code");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        clearPasswordResetState(user);
+        userRepository.save(user);
+
+        return Map.of("message", "Password has been reset successfully");
     }
 
     @PatchMapping("/{id}/last-login")
@@ -376,5 +437,14 @@ public class UserController {
 
         userRepository.delete(user);
         return Map.of("message", "User with id " + id + " has been deleted successfully");
+    }
+
+    private String generateResetCode() {
+        return String.format("%06d", RESET_CODE_RANDOM.nextInt(1_000_000));
+    }
+
+    private void clearPasswordResetState(UserModel user) {
+        user.setPasswordResetCode(null);
+        user.setPasswordResetExpiry(null);
     }
 }

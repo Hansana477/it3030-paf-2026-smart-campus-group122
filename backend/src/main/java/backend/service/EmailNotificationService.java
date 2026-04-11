@@ -73,6 +73,25 @@ public class EmailNotificationService {
         sendEmail(user.getEmail(), "Smart Campus technician approval", body);
     }
 
+    public void sendPasswordResetEmail(UserModel user, String resetCode) {
+        if (user == null || !StringUtils.hasText(user.getEmail()) || !StringUtils.hasText(resetCode)) {
+            return;
+        }
+
+        String body = String.format(
+                "Hello %s,%n%n"
+                        + "We received a password reset request for your Smart Campus account.%n"
+                        + "Your reset code is: %s%n"
+                        + "This code will expire in 15 minutes.%n%n"
+                        + "If you did not request this, you can ignore this email.%n%n"
+                        + "Smart Campus Team",
+                safeName(user),
+                resetCode
+        );
+
+        sendEmail(user.getEmail(), "Smart Campus password reset code", body);
+    }
+
     private void sendEmail(String to, String subject, String body) {
         if (!StringUtils.hasText(mailHost)) {
             logger.info("Skipping email to {} because SMTP host is not configured.", to);
