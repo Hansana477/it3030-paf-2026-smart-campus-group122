@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../Header/Header";
-import "./TechnicianDashboard.css";
 
 function TechnicianDashboard() {
   const navigate = useNavigate();
@@ -15,6 +14,10 @@ function TechnicianDashboard() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const handleOwnAccountDeleted = () => {
+    handleLogout();
   };
 
   useEffect(() => {
@@ -50,36 +53,89 @@ function TechnicianDashboard() {
   }, [token, user?.id]);
 
   return (
-    <main className="tech-dashboard-page">
-      <section className="tech-dashboard-shell">
+    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <Header
           title="Technician Dashboard"
           roleLabel="Technician Portal"
           user={currentUser}
           onUserUpdated={setCurrentUser}
+          onDeleteAccount={handleOwnAccountDeleted}
           onLogout={handleLogout}
         />
 
-        <section className="tech-status-panel">
-          {error ? <p className="tech-status-message tech-status-error">{error}</p> : null}
+        <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+          <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Technician Status</p>
+            <h2 className="mt-4 text-4xl font-extrabold text-primary">Account readiness</h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-500">
+              This area reflects your approval state and keeps your profile tools available from the header at any time.
+            </p>
 
-          {!currentUser?.approved ? (
-            <div className="tech-status-card tech-status-pending">
-              <h2>Pending Approval</h2>
-              <p>
-                Your technician account has been created successfully. Please wait until an admin approves
-                your account before starting technician work.
+            {error ? (
+              <p className="mt-6 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
               </p>
+            ) : null}
+
+            {!currentUser?.approved ? (
+              <div className="mt-8 rounded-[28px] border border-amber-200 bg-amber-50 p-6">
+                <h3 className="text-3xl font-extrabold text-primary">Pending Approval</h3>
+                <p className="mt-4 text-base leading-7 text-slate-600">
+                  Your technician account has been created successfully. Please wait until an admin approves
+                  your account before starting technician work.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-8 rounded-[28px] border border-emerald-200 bg-emerald-50 p-6">
+                <h3 className="text-3xl font-extrabold text-primary">Verified</h3>
+                <p className="mt-4 text-base leading-7 text-slate-600">
+                  Your technician account has been approved by admin. You can now continue with your
+                  technician tasks and dashboard features.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                <p className="text-sm text-slate-400">Role</p>
+                <p className="mt-2 text-2xl font-extrabold text-primary">Technician</p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                <p className="text-sm text-slate-400">Approval</p>
+                <p className="mt-2 text-lg font-bold text-primary">{currentUser?.approved ? "Approved" : "Pending"}</p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                <p className="text-sm text-slate-400">Account</p>
+                <p className="mt-2 text-lg font-bold text-primary">{currentUser?.active ? "Active" : "Inactive"}</p>
+              </div>
             </div>
-          ) : (
-            <div className="tech-status-card tech-status-approved">
-              <h2>Verified</h2>
-              <p>
-                Your technician account has been approved by admin. You can now continue with your
-                technician tasks and dashboard features.
-              </p>
+          </article>
+
+          <article className="rounded-[30px] border border-primary/10 bg-primary p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Portal Guide</p>
+            <h3 className="mt-4 text-3xl font-extrabold">What this state means</h3>
+            <div className="mt-6 grid gap-4">
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Before approval</p>
+                <p className="mt-3 text-sm leading-7 text-slate-200">
+                  Your registration is stored successfully, but admin approval is still required before technician work begins.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">After approval</p>
+                <p className="mt-3 text-sm leading-7 text-slate-200">
+                  Once approved, this dashboard is ready to host maintenance queues, service actions, and technician tools.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Profile tools</p>
+                <p className="mt-3 text-sm leading-7 text-slate-200">
+                  Use the header profile modal to edit your details or change your password without leaving this page.
+                </p>
+              </div>
             </div>
-          )}
+          </article>
         </section>
       </section>
     </main>

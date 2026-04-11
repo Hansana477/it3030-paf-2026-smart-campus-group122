@@ -1,5 +1,6 @@
 package backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -39,6 +40,14 @@ public class UserModel {
 
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
+
+    @JsonIgnore
+    @Column(name = "password_reset_code")
+    private String passwordResetCode;
+
+    @JsonIgnore
+    @Column(name = "password_reset_expiry")
+    private LocalDateTime passwordResetExpiry;
 
     public UserModel() {
         this.createdAt = LocalDateTime.now();
@@ -98,6 +107,7 @@ public class UserModel {
 
     public boolean isApproved() { return approved == null || approved; }
     public Boolean getApproved() { return approved; }
+
     public void setApproved(boolean approved) { this.approved = approved; }
     public void setApproved(Boolean approved) { this.approved = approved; }
 
@@ -106,4 +116,10 @@ public class UserModel {
 
     public LocalDateTime getLastLogin() { return lastLogin; }
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
+
+    public String getPasswordResetCode() { return passwordResetCode; }
+    public void setPasswordResetCode(String passwordResetCode) { this.passwordResetCode = passwordResetCode; }
+
+    public LocalDateTime getPasswordResetExpiry() { return passwordResetExpiry; }
+    public void setPasswordResetExpiry(LocalDateTime passwordResetExpiry) { this.passwordResetExpiry = passwordResetExpiry; }
 }

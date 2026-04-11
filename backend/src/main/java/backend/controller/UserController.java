@@ -5,13 +5,17 @@ import backend.dto.LoginResponse;
 import backend.dto.GoogleAuthRequest;
 import backend.dto.GoogleAuthResponse;
 import backend.dto.ChangePasswordRequest;
+import backend.dto.ForgotPasswordRequest;
+import backend.dto.ResetPasswordRequest;
 import backend.exception.UserNotFoundException;
 import backend.model.UserModel;
 import backend.repository.UserRepository;
 import backend.security.GoogleTokenVerifierService;
 import backend.security.JwtService;
+import backend.service.EmailNotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,6 +31,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,22 +41,31 @@ import java.util.UUID;
 @CrossOrigin(origins = "http://localhost:3000")
 @RequestMapping("/users")
 public class UserController {
+    private static final String STUDENT_EMAIL_SUFFIX = "@my.sliit.lk";
+    private static final String PASSWORD_REQUIREMENTS_MESSAGE =
+            "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol";
+    private static final String PHONE_REQUIREMENTS_MESSAGE = "Phone number must contain exactly 10 digits";
+    private static final int RESET_CODE_EXPIRY_MINUTES = 15;
+    private static final SecureRandom RESET_CODE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final GoogleTokenVerifierService googleTokenVerifierService;
+    private final EmailNotificationService emailNotificationService;
 
     public UserController(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            GoogleTokenVerifierService googleTokenVerifierService
+            GoogleTokenVerifierService googleTokenVerifierService,
+            EmailNotificationService emailNotificationService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.googleTokenVerifierService = googleTokenVerifierService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     @PostMapping
@@ -69,9 +84,15 @@ public class UserController {
 
         newUser.setEmail(normalizedEmail);
         newUser.setRole(normalizedRole);
+        validateStudentEmailForRole(normalizedEmail, normalizedRole);
+        validatePasswordStrength(newUser.getPassword());
+        newUser.setPhone(normalizePhone(newUser.getPhone()));
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
         newUser.setApproved(!"TECHNICIAN".equals(normalizedRole));
-        return userRepository.save(newUser);
+
+        UserModel savedUser = userRepository.save(newUser);
+        emailNotificationService.sendRegistrationEmail(savedUser);
+        return savedUser;
     }
 
     @PostMapping("/login")
@@ -139,7 +160,8 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserModel> getAllUsers() {
+    public List<UserModel> getAllUsers(Authentication authentication) {
+        requireAdmin(authentication);
         return userRepository.findAll();
     }
 
@@ -149,26 +171,36 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public UserModel getUserById(@PathVariable Long id) {
+    public UserModel getUserById(@PathVariable Long id, Authentication authentication) {
+        requireSelfOrAdmin(authentication, id);
         return userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
     }
 
     @GetMapping("/by-email")
-    public UserModel getUserByEmail(@RequestParam String email) {
+    public UserModel getUserByEmail(@RequestParam String email, Authentication authentication) {
+        requireAdmin(authentication);
         return userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new UserNotFoundException("Could not find user with email " + email));
     }
 
     @GetMapping("/by-email-and-role")
-    public UserModel getUserByEmailAndRole(@RequestParam String email, @RequestParam String role) {
+    public UserModel getUserByEmailAndRole(
+            @RequestParam String email,
+            @RequestParam String role,
+            Authentication authentication
+    ) {
+        requireAdmin(authentication);
         return userRepository.findByEmailAndRole(normalizeEmail(email), normalizeRole(role))
                 .orElseThrow(() -> new UserNotFoundException(
                         "Could not find user with email " + email + " and role " + role));
     }
 
     @PutMapping("/{id}")
-    public UserModel updateUser(@RequestBody UserModel updatedUser, @PathVariable Long id) {
+    public UserModel updateUser(@RequestBody UserModel updatedUser, @PathVariable Long id, Authentication authentication) {
+        UserModel authenticatedUser = requireSelfOrAdmin(authentication, id);
+        boolean isAdmin = isAdmin(authenticatedUser);
+
         return userRepository.findById(id)
                 .map(user -> {
                     String normalizedEmail = normalizeEmail(updatedUser.getEmail());
@@ -181,18 +213,29 @@ public class UserController {
                     user.setFullName(updatedUser.getFullName());
                     user.setEmail(normalizedEmail);
                     if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
+                        validatePasswordStrength(updatedUser.getPassword());
                         user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
                     }
-                    if (updatedUser.getRole() != null && !updatedUser.getRole().isBlank()) {
+                    if (isAdmin && updatedUser.getRole() != null && !updatedUser.getRole().isBlank()) {
                         String normalizedRole = normalizeRole(updatedUser.getRole());
                         user.setRole(normalizedRole);
                         if (!"TECHNICIAN".equals(normalizedRole)) {
                             user.setApproved(true);
                         }
                     }
-                    user.setPhone(updatedUser.getPhone());
-                    user.setActive(updatedUser.isActive());
-                    user.setLastLogin(updatedUser.getLastLogin());
+                    validateStudentEmailForRole(user.getEmail(), user.getRole());
+                    user.setPhone(normalizePhone(updatedUser.getPhone()));
+
+                    if (isAdmin) {
+                        user.setActive(updatedUser.isActive());
+                        if ("TECHNICIAN".equals(user.getRole())) {
+                            user.setApproved(updatedUser.isApproved());
+                        } else {
+                            user.setApproved(true);
+                        }
+                        user.setLastLogin(updatedUser.getLastLogin());
+                    }
+
                     return userRepository.save(user);
                 })
                 .orElseThrow(() -> new UserNotFoundException(id));
@@ -219,6 +262,49 @@ public class UserController {
         }
 
         return normalizedRole;
+    }
+
+    private void validateStudentEmailForRole(String normalizedEmail, String normalizedRole) {
+        if ("STUDENT".equals(normalizedRole) && !normalizedEmail.endsWith(STUDENT_EMAIL_SUFFIX)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Student email must end with @my.sliit.lk"
+            );
+        }
+    }
+
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password is required");
+        }
+
+        boolean hasUppercase = password.chars().anyMatch(Character::isUpperCase);
+        boolean hasLowercase = password.chars().anyMatch(Character::isLowerCase);
+        boolean hasDigit = password.chars().anyMatch(Character::isDigit);
+        boolean hasSymbol = password.chars().anyMatch(character ->
+                !Character.isLetterOrDigit(character) && !Character.isWhitespace(character)
+        );
+
+        if (!hasUppercase || !hasLowercase || !hasDigit || !hasSymbol) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, PASSWORD_REQUIREMENTS_MESSAGE);
+        }
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null) {
+            return null;
+        }
+
+        String normalizedPhone = phone.trim();
+        if (normalizedPhone.isBlank()) {
+            return null;
+        }
+
+        if (!normalizedPhone.matches("\\d{10}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, PHONE_REQUIREMENTS_MESSAGE);
+        }
+
+        return normalizedPhone;
     }
 
     private boolean passwordMatches(String rawPassword, UserModel user) {
@@ -264,6 +350,7 @@ public class UserController {
         UserModel user = new UserModel();
         user.setFullName(googleProfile.getFullName());
         user.setEmail(normalizeEmail(googleProfile.getEmail()));
+        validateStudentEmailForRole(user.getEmail(), normalizedRole);
         user.setPassword(passwordEncoder.encode(
                 "GOOGLE_AUTH_" + googleProfile.getSubject() + "_" + UUID.randomUUID()
         ));
@@ -271,7 +358,9 @@ public class UserController {
         user.setPhone(null);
         user.setActive(true);
         user.setApproved(!"TECHNICIAN".equals(normalizedRole));
-        return userRepository.save(user);
+        UserModel savedUser = userRepository.save(user);
+        emailNotificationService.sendRegistrationEmail(savedUser);
+        return savedUser;
     }
 
     private LoginResponse buildLoginResponse(String message, UserModel user) {
@@ -291,7 +380,8 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/approve")
-    public UserModel approveTechnician(@PathVariable Long id) {
+    public UserModel approveTechnician(@PathVariable Long id, Authentication authentication) {
+        requireAdmin(authentication);
         return userRepository.findById(id)
                 .map(user -> {
                     if (!"TECHNICIAN".equals(user.getRole())) {
@@ -299,13 +389,21 @@ public class UserController {
                     }
 
                     user.setApproved(true);
-                    return userRepository.save(user);
+                    UserModel savedUser = userRepository.save(user);
+                    emailNotificationService.sendTechnicianApprovedEmail(savedUser);
+                    return savedUser;
                 })
                 .orElseThrow(() -> new UserNotFoundException(id));
     }
 
     @PatchMapping("/{id}/password")
-    public Map<String, String> changePassword(@PathVariable Long id, @RequestBody ChangePasswordRequest request) {
+    public Map<String, String> changePassword(
+            @PathVariable Long id,
+            @RequestBody ChangePasswordRequest request,
+            Authentication authentication
+    ) {
+        requireSelfOrAdmin(authentication, id);
+
         if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()
                 || request.getNewPassword() == null || request.getNewPassword().isBlank()) {
             throw new ResponseStatusException(
@@ -321,21 +419,81 @@ public class UserController {
             );
         }
 
+        validatePasswordStrength(request.getNewPassword());
+
         UserModel user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
 
-        if (!passwordMatches(request.getCurrentPassword(), user)) {
+        if (!isAdmin(getAuthenticatedUser(authentication)) && !passwordMatches(request.getCurrentPassword(), user)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        clearPasswordResetState(user);
         userRepository.save(user);
 
         return Map.of("message", "Password changed successfully");
     }
 
+    @PostMapping("/forgot-password")
+    public Map<String, String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        String email = normalizeEmail(request.getEmail());
+
+        userRepository.findByEmail(email).ifPresent(user -> {
+            String resetCode = generateResetCode();
+            user.setPasswordResetCode(resetCode);
+            user.setPasswordResetExpiry(LocalDateTime.now().plusMinutes(RESET_CODE_EXPIRY_MINUTES));
+            userRepository.save(user);
+            emailNotificationService.sendPasswordResetEmail(user, resetCode);
+        });
+
+        return Map.of("message", "If an account exists for that email, a password reset code has been sent.");
+    }
+
+    @PostMapping("/reset-password")
+    public Map<String, String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        if (request.getCode() == null || request.getCode().isBlank()
+                || request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Email, reset code, and new password are required"
+            );
+        }
+
+        if (request.getNewPassword().length() < 6) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "New password must be at least 6 characters long"
+            );
+        }
+
+        validatePasswordStrength(request.getNewPassword());
+
+        String email = normalizeEmail(request.getEmail());
+        String resetCode = request.getCode().trim();
+
+        UserModel user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid or expired reset code"
+                ));
+
+        if (!resetCode.equals(user.getPasswordResetCode())
+                || user.getPasswordResetExpiry() == null
+                || user.getPasswordResetExpiry().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired reset code");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        clearPasswordResetState(user);
+        userRepository.save(user);
+
+        return Map.of("message", "Password has been reset successfully");
+    }
+
     @PatchMapping("/{id}/last-login")
-    public UserModel updateLastLogin(@PathVariable Long id) {
+    public UserModel updateLastLogin(@PathVariable Long id, Authentication authentication) {
+        requireSelfOrAdmin(authentication, id);
         if (!userRepository.existsById(id)) {
             throw new UserNotFoundException(id);
         }
@@ -346,11 +504,49 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public Map<String, String> deleteUser(@PathVariable Long id) {
+    public Map<String, String> deleteUser(@PathVariable Long id, Authentication authentication) {
+        requireSelfOrAdmin(authentication, id);
+
         UserModel user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
 
         userRepository.delete(user);
         return Map.of("message", "User with id " + id + " has been deleted successfully");
+    }
+
+    private String generateResetCode() {
+        return String.format("%06d", RESET_CODE_RANDOM.nextInt(1_000_000));
+    }
+
+    private void clearPasswordResetState(UserModel user) {
+        user.setPasswordResetCode(null);
+        user.setPasswordResetExpiry(null);
+    }
+
+    private UserModel getAuthenticatedUser(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UserModel authenticatedUser)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+
+        return authenticatedUser;
+    }
+
+    private UserModel requireSelfOrAdmin(Authentication authentication, Long targetUserId) {
+        UserModel authenticatedUser = getAuthenticatedUser(authentication);
+        if (!isAdmin(authenticatedUser) && !authenticatedUser.getId().equals(targetUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission for this action");
+        }
+
+        return authenticatedUser;
+    }
+
+    private void requireAdmin(Authentication authentication) {
+        if (!isAdmin(getAuthenticatedUser(authentication))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access is required");
+        }
+    }
+
+    private boolean isAdmin(UserModel user) {
+        return user != null && "ADMIN".equals(user.getRole());
     }
 }

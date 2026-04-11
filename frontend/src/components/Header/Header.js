@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import "./Header.css";
 
 function createInitialProfile(user) {
   return {
@@ -64,7 +63,15 @@ function formatDateTime(value) {
   }).format(date);
 }
 
-function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
+const fieldClasses =
+  "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
+const phonePattern = /^\d{10}$/;
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).+$/;
+const phoneHelpText = "Phone number must contain exactly 10 digits.";
+const passwordHelpText =
+  "Password must include at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol.";
+
+function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccount }) {
   const [profileUser, setProfileUser] = useState(createInitialProfile(user));
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState(createInitialProfile(user));
@@ -75,6 +82,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -104,7 +112,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
     const { name, value } = event.target;
     setProfileForm((current) => ({
       ...current,
-      [name]: value,
+      [name]: name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value,
     }));
   };
 
@@ -135,6 +143,11 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
     setProfileSuccess("");
 
     try {
+      const trimmedPhone = profileForm.phone.trim();
+      if (trimmedPhone && !phonePattern.test(trimmedPhone)) {
+        throw new Error(phoneHelpText);
+      }
+
       const response = await fetch(`http://localhost:8080/users/${profileUser.id}`, {
         method: "PUT",
         headers: {
@@ -144,7 +157,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
         body: JSON.stringify({
           fullName: profileForm.fullName.trim(),
           email: profileUser.email,
-          phone: profileForm.phone.trim(),
+          phone: trimmedPhone,
           role: profileUser.role,
           active: profileUser.active,
           approved: profileUser.approved,
@@ -190,6 +203,11 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
       return;
     }
 
+    if (!passwordPattern.test(passwordForm.newPassword)) {
+      setPasswordError(passwordHelpText);
+      return;
+    }
+
     const token = localStorage.getItem("token");
     if (!token) {
       setPasswordError("Missing login token.");
@@ -232,6 +250,56 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!profileUser.id) {
+      setProfileError("User details are not available.");
+      return;
+    }
+
+    const confirmed = window.confirm("Are you sure you want to delete your account? This cannot be undone.");
+    if (!confirmed) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setProfileError("Missing login token.");
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setProfileError("");
+    setProfileSuccess("");
+
+    try {
+      const response = await fetch(`http://localhost:8080/users/${profileUser.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = data?.message || data?.error || "Failed to delete account.";
+        throw new Error(message);
+      }
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setIsProfileOpen(false);
+      if (onDeleteAccount) {
+        onDeleteAccount(profileUser);
+      } else {
+        onLogout?.();
+      }
+    } catch (deleteError) {
+      setProfileError(deleteError.message || "Something went wrong.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   const profileSlug = (profileForm.fullName || profileUser.fullName || "user")
     .trim()
     .toLowerCase()
@@ -240,30 +308,49 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
 
   return (
     <>
-      <header className="app-header">
+      <header className="flex flex-col gap-5 rounded-[30px] border border-white/70 bg-white/85 px-5 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div>
-          <p className="app-header-badge">{roleLabel}</p>
-          <h1 className="app-header-title">{title}</h1>
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">{roleLabel}</p>
+          <h1 className="mt-2 text-3xl font-extrabold text-primary sm:text-[2.2rem]">{title}</h1>
         </div>
 
-        <div className="app-header-user">
-          <p className="app-header-greeting">Hi, {profileUser.fullName || "User"}</p>
-          <button type="button" className="app-header-profile-trigger" onClick={openProfile} aria-label="Open profile">
+        <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+          <div className="hidden rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-sm text-slate-500 sm:block">
+            Hi,
+            {" "}
+            <span className="font-semibold text-primary">{profileUser.fullName || "User"}</span>
+          </div>
+          <button
+            type="button"
+            className="inline-flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-primary via-accent to-secondary text-lg font-bold text-white shadow-[0_16px_35px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5"
+            onClick={openProfile}
+            aria-label="Open profile"
+          >
             <span>{getInitials(profileUser.fullName)}</span>
           </button>
-          <button type="button" className="app-header-button" onClick={onLogout}>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            onClick={onLogout}
+          >
             Logout
           </button>
         </div>
       </header>
 
       {isProfileOpen ? (
-        <div className="app-profile-backdrop" role="presentation">
-          <section className="app-profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-title">
-            <div className="app-profile-hero">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-primary/20 px-4 py-6 backdrop-blur-sm" role="presentation">
+          <section
+            className="mx-auto flex w-full max-w-5xl flex-col rounded-[36px] border border-white/70 bg-white/95 shadow-[0_32px_90px_rgba(15,23,42,0.18)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-title"
+          >
+            <div className="relative min-h-[160px] overflow-hidden rounded-t-[36px] bg-primary">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(6,182,212,0.32),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.22),transparent_28%)]" />
               <button
                 type="button"
-                className="app-profile-close"
+                className="absolute right-5 top-5 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-lg font-semibold text-white transition hover:bg-white/20"
                 onClick={() => setIsProfileOpen(false)}
                 aria-label="Close profile"
               >
@@ -271,144 +358,194 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated }) {
               </button>
             </div>
 
-            <div className="app-profile-summary">
-              <div className="app-profile-avatar">{getInitials(profileUser.fullName)}</div>
-
-              <div className="app-profile-identity">
-                <div className="app-profile-heading-row">
-                  <div>
-                    <p className="app-header-badge">Profile</p>
-                    <h2 id="profile-title">{profileUser.fullName || "User profile"}</h2>
-                    <p className="app-profile-email">{profileUser.email}</p>
+            <div className="max-h-[calc(100vh-48px)] overflow-y-auto px-6 pb-8 pt-6 sm:px-8 sm:pt-8">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                  <div className="inline-flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-primary via-accent to-secondary text-4xl font-bold text-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
+                    {getInitials(profileUser.fullName)}
                   </div>
 
-                  <button type="button" className="app-profile-chip">
-                    {profileUser.role || "USER"}
-                  </button>
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Profile</p>
+                    <h2 id="profile-title" className="mt-2 text-4xl font-extrabold text-primary">
+                      {profileUser.fullName || "User profile"}
+                    </h2>
+                    <p className="mt-2 text-base text-slate-500">{profileUser.email}</p>
+                  </div>
                 </div>
 
-                <div className="app-profile-stats">
-                  <div className="app-profile-stat">
-                    <span>Joined</span>
-                    <strong>{formatDate(profileUser.createdAt)}</strong>
-                  </div>
-                  <div className="app-profile-stat">
-                    <span>Last login</span>
-                    <strong>{formatDateTime(profileUser.lastLogin)}</strong>
-                  </div>
-                  <div className="app-profile-stat">
-                    <span>Status</span>
-                    <strong>{profileUser.active ? "Active" : "Inactive"}</strong>
-                  </div>
-                  <div className="app-profile-stat">
-                    <span>Approval</span>
-                    <strong>{profileUser.approved ? "Approved" : "Pending"}</strong>
-                  </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center self-start rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary"
+                >
+                  {profileUser.role || "USER"}
+                </button>
+              </div>
+
+              <div className="mt-8 grid gap-4 border-y border-slate-200 py-6 text-left sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl bg-slate-50/70 p-4">
+                  <span className="text-sm text-slate-400">Joined</span>
+                  <strong className="mt-2 block text-xl text-primary">{formatDate(profileUser.createdAt)}</strong>
+                </div>
+                <div className="rounded-2xl bg-slate-50/70 p-4">
+                  <span className="text-sm text-slate-400">Last login</span>
+                  <strong className="mt-2 block text-xl text-primary">{formatDateTime(profileUser.lastLogin)}</strong>
+                </div>
+                <div className="rounded-2xl bg-slate-50/70 p-4">
+                  <span className="text-sm text-slate-400">Status</span>
+                  <strong className="mt-2 block text-xl text-primary">{profileUser.active ? "Active" : "Inactive"}</strong>
+                </div>
+                <div className="rounded-2xl bg-slate-50/70 p-4">
+                  <span className="text-sm text-slate-400">Approval</span>
+                  <strong className="mt-2 block text-xl text-primary">{profileUser.approved ? "Approved" : "Pending"}</strong>
                 </div>
               </div>
-            </div>
 
-            <div className="app-profile-grid">
-              <form className="app-profile-section" onSubmit={handleSaveProfile}>
-                <div className="app-profile-section-copy">
-                  <h3>Public profile</h3>
-                  <p>Update the details shown around your account.</p>
-                </div>
+              <div className="mt-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <form className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)]" onSubmit={handleSaveProfile}>
+                  <div>
+                    <h3 className="text-2xl font-bold text-primary">Public profile</h3>
+                    <p className="mt-2 text-base text-slate-500">Update the details shown around your account.</p>
+                  </div>
 
-                <label className="app-profile-field">
-                  <span>Full name</span>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={profileForm.fullName}
-                    onChange={handleProfileChange}
-                    required
-                  />
-                </label>
-
-                <div className="app-profile-inline-fields">
-                  <label className="app-profile-field">
-                    <span>Email</span>
-                    <input type="email" name="email" value={profileUser.email} readOnly />
+                  <label className="mt-6 grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Full name</span>
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={profileForm.fullName}
+                      onChange={handleProfileChange}
+                      className={fieldClasses}
+                      required
+                    />
                   </label>
 
-                  <label className="app-profile-field">
-                    <span>Profile slug</span>
-                    <input type="text" value={profileSlug} readOnly />
+                  <div className="mt-5 grid gap-5 md:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-semibold text-primary">Email</span>
+                      <input type="email" name="email" value={profileUser.email} readOnly className={fieldClasses} />
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-semibold text-primary">Profile slug</span>
+                      <input type="text" value={profileSlug} readOnly className={fieldClasses} />
+                    </label>
+                  </div>
+
+                  <label className="mt-5 grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Phone</span>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={profileForm.phone}
+                      onChange={handleProfileChange}
+                      placeholder="Add phone number"
+                      inputMode="numeric"
+                      maxLength="10"
+                      pattern={phonePattern.source}
+                      className={fieldClasses}
+                    />
+                    <p className="text-sm leading-6 text-slate-500">{phoneHelpText}</p>
                   </label>
-                </div>
 
-                <label className="app-profile-field">
-                  <span>Phone</span>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={profileForm.phone}
-                    onChange={handleProfileChange}
-                    placeholder="Add phone number"
-                  />
-                </label>
+                  {profileError ? (
+                    <p className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                      {profileError}
+                    </p>
+                  ) : null}
+                  {profileSuccess ? (
+                    <p className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      {profileSuccess}
+                    </p>
+                  ) : null}
 
-                {profileError ? <p className="app-profile-message app-profile-message-error">{profileError}</p> : null}
-                {profileSuccess ? <p className="app-profile-message app-profile-message-success">{profileSuccess}</p> : null}
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-5 py-3.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-wait disabled:opacity-70"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeletingAccount}
+                    >
+                      {isDeletingAccount ? "Deleting..." : "Delete my account"}
+                    </button>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "Saving..." : "Save profile"}
+                    </button>
+                  </div>
+                </form>
 
-                <div className="app-profile-actions">
-                  <button type="submit" className="app-header-button" disabled={isSaving}>
-                    {isSaving ? "Saving..." : "Save profile"}
-                  </button>
-                </div>
-              </form>
+                <form className="rounded-[30px] border border-slate-200 bg-slate-50/60 p-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)]" onSubmit={handleChangePassword}>
+                  <div>
+                    <h3 className="text-2xl font-bold text-primary">Security</h3>
+                    <p className="mt-2 text-base text-slate-500">Change your password to keep your account secure.</p>
+                  </div>
 
-              <form className="app-profile-section" onSubmit={handleChangePassword}>
-                <div className="app-profile-section-copy">
-                  <h3>Security</h3>
-                  <p>Change your password to keep your account secure.</p>
-                </div>
+                  <label className="mt-6 grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Current password</span>
+                    <input
+                      type="password"
+                      name="currentPassword"
+                      value={passwordForm.currentPassword}
+                      onChange={handlePasswordChange}
+                      className={fieldClasses}
+                      required
+                    />
+                  </label>
 
-                <label className="app-profile-field">
-                  <span>Current password</span>
-                  <input
-                    type="password"
-                    name="currentPassword"
-                    value={passwordForm.currentPassword}
-                    onChange={handlePasswordChange}
-                    required
-                  />
-                </label>
+                  <label className="mt-5 grid gap-2">
+                    <span className="text-sm font-semibold text-primary">New password</span>
+                    <input
+                      type="password"
+                      name="newPassword"
+                      value={passwordForm.newPassword}
+                      onChange={handlePasswordChange}
+                      minLength="6"
+                      pattern={passwordPattern.source}
+                      className={fieldClasses}
+                      required
+                    />
+                    <p className="text-sm leading-6 text-slate-500">{passwordHelpText}</p>
+                  </label>
 
-                <label className="app-profile-field">
-                  <span>New password</span>
-                  <input
-                    type="password"
-                    name="newPassword"
-                    value={passwordForm.newPassword}
-                    onChange={handlePasswordChange}
-                    minLength="6"
-                    required
-                  />
-                </label>
+                  <label className="mt-5 grid gap-2">
+                    <span className="text-sm font-semibold text-primary">Confirm new password</span>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={passwordForm.confirmPassword}
+                      onChange={handlePasswordChange}
+                      minLength="6"
+                      className={fieldClasses}
+                      required
+                    />
+                  </label>
 
-                <label className="app-profile-field">
-                  <span>Confirm new password</span>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={passwordForm.confirmPassword}
-                    onChange={handlePasswordChange}
-                    minLength="6"
-                    required
-                  />
-                </label>
+                  {passwordError ? (
+                    <p className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                      {passwordError}
+                    </p>
+                  ) : null}
+                  {passwordSuccess ? (
+                    <p className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      {passwordSuccess}
+                    </p>
+                  ) : null}
 
-                {passwordError ? <p className="app-profile-message app-profile-message-error">{passwordError}</p> : null}
-                {passwordSuccess ? <p className="app-profile-message app-profile-message-success">{passwordSuccess}</p> : null}
-
-                <div className="app-profile-actions">
-                  <button type="submit" className="app-header-button" disabled={isChangingPassword}>
-                    {isChangingPassword ? "Updating..." : "Change password"}
-                  </button>
-                </div>
-              </form>
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
+                      disabled={isChangingPassword}
+                    >
+                      {isChangingPassword ? "Updating..." : "Change password"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </section>
         </div>
