@@ -5,6 +5,10 @@ import Login from "./components/Login/Login";
 import AdminDashboard from "./components/AdminDashboard/AdminDashboard";
 import StudentDashboard from "./components/StudentDashboard/StudentDashboard";
 import TechnicianDashboard from "./components/TechnicianDashboard/TechnicianDashboard";
+import AdminResourceManagement from "./components/AdminDashboard/AdminResourceManagement";
+import AdminBookingManagement from "./components/AdminDashboard/AdminBookingManagement";
+
+import StudentResourceView from "./components/StudentDashboard/StudentResourceView";
 
 function App() {
   return (
@@ -16,6 +20,9 @@ function App() {
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/technician-dashboard" element={<TechnicianDashboard />} />
+        <Route path="/admin-resource-management" element={<AdminResourceManagement />} />
+        <Route path="/admin-booking-management" element={<AdminBookingManagement />} />
+        <Route path="/student-resource-view" element={<StudentResourceView />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
