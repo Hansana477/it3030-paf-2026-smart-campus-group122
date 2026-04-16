@@ -177,7 +177,7 @@ const DUMMY_RESOURCES = [
     name: 'Group Study Room 204',
     type: 'STUDY_AREA',
     location: 'Library, Floor 2',
-    capacity: 8,
+    capacity: 10,
     status: 'MAINTENANCE',
     description: 'Collaborative study room with whiteboard',
     amenities: ['Whiteboard', 'Power Outlets', 'Table', 'Chairs'],
@@ -791,7 +791,7 @@ const AdminResourceManagement = () => {
                         onChange={(e) => setResourceForm({ ...resourceForm, type: e.target.value })}
                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
-                        <option value="LECTURE_HALL">lecture Hall</option>
+                        <option value="LECTURE_HALL">Lecture Hall</option>
                         <option value="LAB">Lab</option>
                         <option value="MEETING_ROOM">Meeting Room</option>
                         <option value="EQUIPMENT">Equipment</option>
