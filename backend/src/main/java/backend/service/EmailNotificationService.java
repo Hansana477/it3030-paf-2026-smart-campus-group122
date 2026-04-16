@@ -92,6 +92,29 @@ public class EmailNotificationService {
         sendEmail(user.getEmail(), "Smart Campus password reset code", body);
     }
 
+    public void sendNotificationEmail(UserModel user, String title, String message, String type) {
+        if (user == null || !StringUtils.hasText(user.getEmail()) || !StringUtils.hasText(title) || !StringUtils.hasText(message)) {
+            return;
+        }
+
+        String typeLabel = formatNotificationType(type);
+        String body = String.format(
+                "Hello %s,%n%n"
+                        + "You have a new Smart Campus notification.%n%n"
+                        + "Type: %s%n"
+                        + "Title: %s%n"
+                        + "Details: %s%n%n"
+                        + "Please sign in to Smart Campus to view the latest updates.%n%n"
+                        + "Smart Campus Team",
+                safeName(user),
+                typeLabel,
+                title,
+                message
+        );
+
+        sendEmail(user.getEmail(), "Smart Campus notification: " + title, body);
+    }
+
     private void sendEmail(String to, String subject, String body) {
         if (!StringUtils.hasText(mailHost)) {
             logger.info("Skipping email to {} because SMTP host is not configured.", to);
@@ -113,5 +136,19 @@ public class EmailNotificationService {
 
     private String safeName(UserModel user) {
         return StringUtils.hasText(user.getFullName()) ? user.getFullName() : "User";
+    }
+
+    private String formatNotificationType(String type) {
+        if (!StringUtils.hasText(type)) {
+            return "General update";
+        }
+
+        return switch (type) {
+            case "PASSWORD_CHANGED" -> "Password change";
+            case "ACCOUNT_DETAILS_UPDATED" -> "Account details update";
+            case "TECHNICIAN_APPROVED" -> "Technician approval";
+            case "TECHNICIAN_PENDING" -> "Pending technician approval";
+            default -> "General update";
+        };
     }
 }

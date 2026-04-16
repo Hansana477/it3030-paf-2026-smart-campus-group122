@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<UserModel, Long> {
 
     Optional<UserModel> findByEmailAndRole(String email, String role);
 
+    List<UserModel> findByRole(String role);
+
     List<UserModel> findByRoleAndApproved(String role, boolean approved);
 
     @Modifying
