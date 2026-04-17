@@ -117,7 +117,7 @@ export default function StudentResourceLiveView() {
 
         {!selectedResource ? (
           <div className="text-center text-slate-400 py-10">
-            👈 Select a resource
+            Select a resource
           </div>
         ) : (
           <>
@@ -177,6 +177,8 @@ export default function StudentResourceLiveView() {
                     className="w-full border p-2 rounded-lg"
                   />
                 </div>
+
+                <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-600 rounded-full">Available</span>
 
                 <div>
                   <label className="text-sm">End</label>
