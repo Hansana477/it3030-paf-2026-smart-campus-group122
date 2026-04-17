@@ -113,6 +113,8 @@ export default function StudentResourceLiveView() {
       {/* ---------------- RIGHT: LIVE BOOKING PANEL ---------------- */}
       <div className="bg-white rounded-xl border p-4 h-fit sticky top-6">
 
+        
+
         {!selectedResource ? (
           <div className="text-center text-slate-400 py-10">
             👈 Select a resource
@@ -133,6 +135,23 @@ export default function StudentResourceLiveView() {
               <Users className="w-4 h-4" />
               Capacity: {selectedResource.capacity}
             </p>
+
+            {/* SMART LIVE SUMMARY */}
+            <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-lg text-sm mb-3">
+            <p className="font-semibold text-emerald-700">Live Booking Summary</p>
+
+            <p className="text-slate-700 mt-1">
+                Date: {date || "Not selected"}
+            </p>
+
+            <p className="text-slate-700">
+                Time: {startTime && endTime ? `${startTime} - ${endTime}` : "Not selected"}
+            </p>
+
+            <p className="text-slate-700">
+              Resource: {selectedResource?.name}
+            </p>
+            </div>
 
             <div className="border-t pt-3 space-y-3">
 
