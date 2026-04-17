@@ -395,7 +395,7 @@ const AdminResourceManagement = () => {
     if (!selectedResource) return;
     setSeatForm({
       number: '',
-      type: 'standard',
+      type: 'STANDARD',
       status: 'AVAILABLE',
       hasPower: false,
       hasUsb: false,
