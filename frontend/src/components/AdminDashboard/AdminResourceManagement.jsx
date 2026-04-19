@@ -272,6 +272,23 @@ const AdminResourceManagement = () => {
     return matchesSearch && matchesType && matchesStatus;
   });
 
+  const filteredResources = resources.filter(resource => {
+  const query = searchTerm.toLowerCase();
+
+  const matchesSearch =
+    resource.name.toLowerCase().includes(query) ||
+    resource.location.toLowerCase().includes(query) ||
+    resource.description.toLowerCase().includes(query) ||
+    (resource.amenities || []).some(amenity =>
+      amenity.toLowerCase().includes(query)
+    );
+
+  const matchesType = selectedType === 'ALL' || resource.type === selectedType;
+  const matchesStatus = selectedStatus === 'ALL' || resource.status === selectedStatus;
+
+  return matchesSearch && matchesType && matchesStatus;
+});
+
   // Resource CRUD
   const handleAddResource = () => {
     setResourceForm({
@@ -713,12 +730,6 @@ const AdminResourceManagement = () => {
                         </button>
                         <button onClick={() => handleDeleteResource(resource.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
                           <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onSelect(resource)}
-                          className="px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-lg flex items-center gap-1"
-                        >
-                        <CheckCircle className="w-3.5 h-3.5" /> Select
                         </button>
                       </div>
                     </td>
