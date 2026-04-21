@@ -1064,19 +1064,6 @@ const AdminResourceManagement = () => {
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="e.g., A01, B12"
                 />
-                if (!seatForm.number?.trim()) {
-                  showNotificationMessage('Seat number is required', 'error');
-                  return;
-                }
-
-                const isDuplicate = selectedResource.seatingLayout.seats.some(
-                  (s) => s.number === seatForm.number && s.id !== seatForm.id
-               );
-
-                if (isDuplicate) {
-                  showNotificationMessage('Seat number already exists!', 'error');
-                  return;
-          }
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1 block">Seat Type</label>
