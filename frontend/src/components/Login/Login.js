@@ -457,6 +457,12 @@ function Login() {
               <Link to="/register" className="font-semibold text-accent transition hover:text-primary">
                 Create one
               </Link>
+              {" "}
+              or
+              {" "}
+              <Link to="/about-us" className="font-semibold text-accent transition hover:text-primary">
+                learn about us
+              </Link>
             </p>
           </div>
 

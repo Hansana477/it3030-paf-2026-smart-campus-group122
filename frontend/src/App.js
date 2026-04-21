@@ -7,6 +7,7 @@ import StudentDashboard from "./components/StudentDashboard/StudentDashboard";
 import TechnicianDashboard from "./components/TechnicianDashboard/TechnicianDashboard";
 import AdminResourceManagement from "./components/AdminDashboard/AdminResourceManagement";
 import AdminBookingManagement from "./components/AdminDashboard/AdminBookingManagement";
+import AboutUs from "./components/AboutUs/AboutUs";
 
 import StudentResourceView from "./components/StudentDashboard/StudentResourceView";
 
@@ -17,6 +18,7 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/about-us" element={<AboutUs />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/technician-dashboard" element={<TechnicianDashboard />} />
