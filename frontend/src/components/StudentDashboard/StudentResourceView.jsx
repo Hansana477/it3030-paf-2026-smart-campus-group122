@@ -701,6 +701,28 @@ const StudentResourceView = () => {
               >
                 Close
               </button>
+              <div className="flex gap-2">
+              <input
+                type="text"
+               value={seatForm.number || ''}
+               onChange={(e) => setSeatForm({ ...seatForm, number: e.target.value.toUpperCase() })}
+               className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+               placeholder="e.g., A01, B12"
+               />
+
+              <button
+              type="button"
+                onClick={() => {
+                const row = String.fromCharCode(65 + seatForm.y);
+                const col = (seatForm.x + 1).toString().padStart(2, '0');
+                const autoNumber = `${row}${col}`;
+                setSeatForm({ ...seatForm, number: autoNumber });
+                }}
+                className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+              >
+                  Auto
+              </button>
+             </div>
               <button
                 className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
               >
