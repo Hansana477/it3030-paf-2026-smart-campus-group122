@@ -239,7 +239,7 @@ const AdminResourceManagement = () => {
     images: [],
     amenities: [],
     availabilityWindows: [
-      { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }
+      { dayOfWeek: 1, date: '', startTime: '09:00', endTime: '17:00' }
     ],
   });
   
@@ -396,7 +396,7 @@ const AdminResourceManagement = () => {
       description: '',
       images: [],
       amenities: [],
-      availabilityWindows: [{ dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }],
+      availabilityWindows: [{ dayOfWeek: 1, date: '', startTime: '09:00', endTime: '17:00' }],
     });
     setIsEditing(false);
     setFormErrors({});
@@ -678,7 +678,7 @@ const AdminResourceManagement = () => {
   const addAvailabilityWindow = () => {
     setResourceForm(prev => ({
       ...prev,
-      availabilityWindows: [...(prev.availabilityWindows || []), { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }]
+      availabilityWindows: [...(prev.availabilityWindows || []), { dayOfWeek: 1, date: '', startTime: '09:00', endTime: '17:00' }]
     }));
   };
 
@@ -1265,29 +1265,47 @@ const AdminResourceManagement = () => {
               {activeTab === 'availability' && (
                 <div className="space-y-4">
                   {resourceForm.availabilityWindows?.map((window, idx) => (
-                    <div key={idx} className="flex gap-3 items-center p-3 bg-slate-50 rounded-lg">
-                      <select
-                        value={window.dayOfWeek}
-                        onChange={(e) => updateAvailabilityWindow(idx, 'dayOfWeek', parseInt(e.target.value))}
-                        className="px-3 py-2 border rounded-lg bg-white"
-                      >
-                        {daysOfWeek.map((day, i) => (
-                          <option key={i} value={i}>{day}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="time"
-                        value={window.startTime}
-                        onChange={(e) => updateAvailabilityWindow(idx, 'startTime', e.target.value)}
-                        className="px-3 py-2 border rounded-lg"
-                      />
-                      <span>to</span>
-                      <input
-                        type="time"
-                        value={window.endTime}
-                        onChange={(e) => updateAvailabilityWindow(idx, 'endTime', e.target.value)}
-                        className="px-3 py-2 border rounded-lg"
-                      />
+                    <div key={idx} className="grid grid-cols-1 gap-3 p-3 bg-slate-50 rounded-lg md:grid-cols-[1fr_1fr_120px_auto_120px_auto] md:items-end">
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">Day</label>
+                        <select
+                          value={window.dayOfWeek}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'dayOfWeek', parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border rounded-lg bg-white"
+                        >
+                          {daysOfWeek.map((day, i) => (
+                            <option key={i} value={i}>{day}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">Date</label>
+                        <input
+                          type="date"
+                          value={window.date || ''}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'date', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">Start</label>
+                        <input
+                          type="time"
+                          value={window.startTime}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'startTime', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <span className="hidden pb-2 text-slate-500 md:block">to</span>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">End</label>
+                        <input
+                          type="time"
+                          value={window.endTime}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'endTime', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
                       <button onClick={() => removeAvailabilityWindow(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
                         <Trash2 className="w-4 h-4" />
                       </button>

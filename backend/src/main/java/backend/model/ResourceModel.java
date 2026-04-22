@@ -92,11 +92,15 @@ public class ResourceModel {
 
     public static class AvailabilityWindow {
         private Integer dayOfWeek;
+        private String date;
         private String startTime;
         private String endTime;
 
         public Integer getDayOfWeek() { return dayOfWeek; }
         public void setDayOfWeek(Integer dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+
+        public String getDate() { return date; }
+        public void setDate(String date) { this.date = date; }
 
         public String getStartTime() { return startTime; }
         public void setStartTime(String startTime) { this.startTime = startTime; }

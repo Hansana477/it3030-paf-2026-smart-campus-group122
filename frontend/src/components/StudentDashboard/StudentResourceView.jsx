@@ -187,8 +187,24 @@ const StudentResourceView = () => {
 
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const today = new Date().getDay();
+  const getDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const todayDate = getDateKey(new Date());
+  const formatAvailabilityDate = (date) => {
+    if (!date) return null;
+    return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
   const getTodayHours = (availabilityWindows) => {
-    const todayWindow = availabilityWindows?.find(w => w.dayOfWeek === today);
+    const todayWindow = availabilityWindows?.find(w => w.date === todayDate) ||
+                        availabilityWindows?.find(w => !w.date && w.dayOfWeek === today);
     if (todayWindow) {
       return `${todayWindow.startTime} - ${todayWindow.endTime}`;
     }
@@ -576,8 +592,11 @@ const StudentResourceView = () => {
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {selectedResource.availabilityWindows?.map((window, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-2 bg-white rounded-lg border border-slate-200">
+                      <div key={idx} className="flex flex-col gap-1 p-2 bg-white rounded-lg border border-slate-200">
                         <span className="text-sm font-medium text-slate-700">{daysOfWeek[window.dayOfWeek]}</span>
+                        {window.date && (
+                          <span className="text-xs text-slate-400">{formatAvailabilityDate(window.date)}</span>
+                        )}
                         <span className="text-sm text-slate-500">{window.startTime} - {window.endTime}</span>
                       </div>
                     ))}
