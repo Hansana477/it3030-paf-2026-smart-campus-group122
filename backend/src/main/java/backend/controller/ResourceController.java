@@ -49,6 +49,7 @@ public class ResourceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResourceModel createResource(@RequestBody ResourceModel resource) {
+        normalizeResource(resource);
         validateResource(resource);
         resource.setId(null);
         resource.applyDefaults();
@@ -61,6 +62,7 @@ public class ResourceController {
             throw new UserNotFoundException("Could not find resource with id " + id);
         }
 
+        normalizeResource(updatedResource);
         validateResource(updatedResource);
         updatedResource.setId(id);
         updatedResource.applyDefaults();
@@ -74,6 +76,13 @@ public class ResourceController {
 
         resourceRepository.delete(resource);
         return Map.of("message", "Resource deleted successfully");
+    }
+
+    private void normalizeResource(ResourceModel resource) {
+        if (resource.getType() != null && "EQUIPMENT".equalsIgnoreCase(resource.getType())) {
+            resource.setCapacity(1);
+            resource.setSeatingLayout(null);
+        }
     }
 
     private void validateResource(ResourceModel resource) {

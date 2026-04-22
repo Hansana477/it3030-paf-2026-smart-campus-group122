@@ -322,10 +322,37 @@ const AdminResourceManagement = () => {
         }
       }
 
-      setResourceForm(prev => ({
-        ...prev,
-        images: [...(prev.images || []), ...uploadedUrls],
-      }));
+      const nextImages = [...(resourceForm.images || []), ...uploadedUrls];
+
+      if (isEditing && selectedResource) {
+        const updatedResource = normalizeResourcePayload({
+          ...selectedResource,
+          ...resourceForm,
+          id: selectedResource.id,
+          images: nextImages,
+        });
+
+        const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(updatedResource),
+        });
+        const savedResource = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to save uploaded images');
+        }
+
+        setResourceForm(savedResource);
+        setSelectedResource(savedResource);
+        setResources(prev => prev.map(resource => resource.id === savedResource.id ? savedResource : resource));
+      } else {
+        setResourceForm(prev => ({
+          ...prev,
+          images: nextImages,
+        }));
+      }
+
       showNotificationMessage(`${uploadedUrls.length} image${uploadedUrls.length !== 1 ? 's' : ''} uploaded`, 'success');
     } catch (error) {
       showNotificationMessage(error.message || 'Failed to upload image', 'error');
@@ -341,6 +368,12 @@ const AdminResourceManagement = () => {
     setShowNotification(true);
     setTimeout(() => setShowNotification(false), 3000);
   };
+
+  const normalizeResourcePayload = (resource) => ({
+    ...resource,
+    capacity: resource.type === 'EQUIPMENT' ? 1 : resource.capacity,
+    seatingLayout: resource.type === 'EQUIPMENT' ? null : resource.seatingLayout,
+  });
 
   // Filter resources
   const filteredResources = resources.filter(resource => {
@@ -410,7 +443,7 @@ const AdminResourceManagement = () => {
     if (!resourceForm.name?.trim()) errors.name = 'Resource name is required';
     if (resourceForm.name && resourceForm.name.length < 2) errors.name = 'Name must be at least 2 characters';
     if (!resourceForm.location) errors.location = 'Location is required';
-    if (!resourceForm.capacity || resourceForm.capacity < 1) errors.capacity = 'Capacity must be at least 1';
+    if (resourceForm.type !== 'EQUIPMENT' && (!resourceForm.capacity || resourceForm.capacity < 1)) errors.capacity = 'Capacity must be at least 1';
     if (!resourceForm.description?.trim()) errors.description = 'Description is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -449,7 +482,11 @@ const AdminResourceManagement = () => {
         const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
-          body: JSON.stringify({ ...selectedResource, ...resourceForm, id: selectedResource.id }),
+          body: JSON.stringify(normalizeResourcePayload({
+            ...selectedResource,
+            ...resourceForm,
+            id: selectedResource.id,
+          })),
         });
         const savedResource = await response.json().catch(() => null);
 
@@ -461,7 +498,7 @@ const AdminResourceManagement = () => {
         setSelectedResource(savedResource);
         showNotificationMessage('Resource updated successfully!', 'success');
       } else {
-        const newResource = {
+        const newResource = normalizeResourcePayload({
           name: resourceForm.name,
           type: resourceForm.type,
           location: resourceForm.location,
@@ -486,7 +523,7 @@ const AdminResourceManagement = () => {
               warrantyExpiry: '',
             }
           } : {}),
-        };
+        });
         const response = await fetch(`${API_BASE_URL}/resources`, {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -846,6 +883,7 @@ const AdminResourceManagement = () => {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
+                  <th className="text-left p-4 font-medium text-slate-600">Image</th>
                   <th className="text-left p-4 font-medium text-slate-600">Name</th>
                   <th className="text-left p-4 font-medium text-slate-600">Type</th>
                   <th className="text-left p-4 font-medium text-slate-600">Location</th>
@@ -857,6 +895,22 @@ const AdminResourceManagement = () => {
               <tbody>
                 {filteredResources.map((resource) => (
                   <tr key={resource.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-4">
+                      {resource.images?.[0] ? (
+                        <div className="relative h-14 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                          <img src={resource.images[0]} alt={resource.name} className="h-full w-full object-cover" />
+                          {resource.images.length > 1 && (
+                            <span className="absolute bottom-1 right-1 rounded bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                              +{resource.images.length - 1}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex h-14 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-400">
+                          {getResourceTypeIcon(resource.type)}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-4 font-medium text-slate-800">{resource.name}</td>
                     <td className="p-4">
                       <span className="flex items-center gap-1 text-sm">
@@ -865,7 +919,7 @@ const AdminResourceManagement = () => {
                       </span>
                     </td>
                     <td className="p-4 text-slate-600">{resource.location}</td>
-                    <td className="p-4 text-center">{resource.capacity}</td>
+                    <td className="p-4 text-center">{resource.type === 'EQUIPMENT' ? 'Single item' : resource.capacity}</td>
                     <td className="p-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(resource.status)}`}>
                         {resource.status}
@@ -953,7 +1007,15 @@ const AdminResourceManagement = () => {
                       <label className="text-sm font-medium text-slate-700 mb-1 block">Resource Type *</label>
                       <select
                         value={resourceForm.type}
-                        onChange={(e) => setResourceForm({ ...resourceForm, type: e.target.value })}
+                        onChange={(e) => {
+                          const nextType = e.target.value;
+                          setResourceForm({
+                            ...resourceForm,
+                            type: nextType,
+                            capacity: nextType === 'EQUIPMENT' ? 1 : resourceForm.capacity,
+                            seatingLayout: nextType === 'EQUIPMENT' ? null : resourceForm.seatingLayout,
+                          });
+                        }}
                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
                         <option value="LECTURE_HALL">Lecture Hall</option>
@@ -979,19 +1041,21 @@ const AdminResourceManagement = () => {
                       {formErrors.location && <p className="text-xs text-red-500 mt-1">{formErrors.location}</p>}
                     </div>
                     
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 mb-1 block">Capacity *</label>
-                      <input
-                        type="number"
-                        value={resourceForm.capacity || ''}
-                        onChange={(e) => setResourceForm({ ...resourceForm, capacity: parseInt(e.target.value) || 0 })}
-                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                          formErrors.capacity ? 'border-red-500 bg-red-50' : 'border-slate-200'
-                        }`}
-                        min="1"
-                      />
-                      {formErrors.capacity && <p className="text-xs text-red-500 mt-1">{formErrors.capacity}</p>}
-                    </div>
+                    {resourceForm.type !== 'EQUIPMENT' && (
+                      <div>
+                        <label className="text-sm font-medium text-slate-700 mb-1 block">Capacity *</label>
+                        <input
+                          type="number"
+                          value={resourceForm.capacity || ''}
+                          onChange={(e) => setResourceForm({ ...resourceForm, capacity: parseInt(e.target.value) || 0 })}
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                            formErrors.capacity ? 'border-red-500 bg-red-50' : 'border-slate-200'
+                          }`}
+                          min="1"
+                        />
+                        {formErrors.capacity && <p className="text-xs text-red-500 mt-1">{formErrors.capacity}</p>}
+                      </div>
+                    )}
                     
                     <div>
                       <label className="text-sm font-medium text-slate-700 mb-1 block">Status</label>
@@ -1327,12 +1391,30 @@ const AdminResourceManagement = () => {
 const ResourceCard = ({ resource, onEdit, onDelete, onView, getStatusBadge, getResourceTypeIcon }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 group">
+      <div className="relative h-44 bg-slate-100">
+        {resource.images?.[0] ? (
+          <img
+            src={resource.images[0]}
+            alt={resource.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-slate-400">
+            {getResourceTypeIcon(resource.type)}
+          </div>
+        )}
+        <div className="absolute left-3 top-3 rounded-lg bg-white/90 p-2 text-slate-700 shadow">
+          {getResourceTypeIcon(resource.type)}
+        </div>
+        {resource.images?.length > 1 && (
+          <span className="absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-semibold text-white shadow">
+            {resource.images.length} images
+          </span>
+        )}
+      </div>
       <div className="p-5 border-b border-slate-100">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
-              {getResourceTypeIcon(resource.type)}
-            </div>
             <div>
               <h3 className="font-bold text-slate-800 text-lg">{resource.name}</h3>
               <div className="flex items-center gap-2 mt-1">
@@ -1349,11 +1431,13 @@ const ResourceCard = ({ resource, onEdit, onDelete, onView, getStatusBadge, getR
       </div>
       
       <div className="p-4 bg-slate-50">
-        <div className="grid grid-cols-3 gap-3 text-center mb-3">
-          <div>
-            <div className="text-lg font-bold text-slate-700">{resource.capacity}</div>
-            <div className="text-xs text-slate-500">Capacity</div>
-          </div>
+        <div className={`grid ${resource.type === 'EQUIPMENT' ? 'grid-cols-2' : 'grid-cols-3'} gap-3 text-center mb-3`}>
+          {resource.type !== 'EQUIPMENT' && (
+            <div>
+              <div className="text-lg font-bold text-slate-700">{resource.capacity}</div>
+              <div className="text-xs text-slate-500">Capacity</div>
+            </div>
+          )}
           <div>
             <div className="text-lg font-bold text-slate-700">{resource.amenities?.length || 0}</div>
             <div className="text-xs text-slate-500">Amenities</div>

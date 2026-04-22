@@ -52,6 +52,7 @@ const StudentResourceView = () => {
   const [resources, setResources] = useState([]);
   const [selectedResource, setSelectedResource] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
   const [selectedAmenity, setSelectedAmenity] = useState('ALL');
@@ -124,7 +125,20 @@ const StudentResourceView = () => {
 
   const handleViewDetails = (resource) => {
     setSelectedResource(resource);
+    setSelectedImageIndex(0);
     setShowDetailsModal(true);
+  };
+
+  const showPreviousImage = () => {
+    const imageCount = selectedResource?.images?.length || 0;
+    if (imageCount < 2) return;
+    setSelectedImageIndex((current) => (current - 1 + imageCount) % imageCount);
+  };
+
+  const showNextImage = () => {
+    const imageCount = selectedResource?.images?.length || 0;
+    if (imageCount < 2) return;
+    setSelectedImageIndex((current) => (current + 1) % imageCount);
   };
 
   const toggleFavorite = (resourceId) => {
@@ -434,22 +448,56 @@ const StudentResourceView = () => {
               {/* Images */}
               {selectedResource.images?.length > 0 && (
                 <div className="mb-6">
-                  <div className="rounded-xl overflow-hidden">
+                  <div className="relative rounded-xl overflow-hidden bg-slate-100">
                     <img
-                      src={selectedResource.images[0]}
-                      alt={selectedResource.name}
+                      src={selectedResource.images[selectedImageIndex]}
+                      alt={`${selectedResource.name} view ${selectedImageIndex + 1}`}
                       className="w-full h-64 object-cover"
                     />
+                    <div className="absolute left-3 top-3 rounded-lg bg-white/90 p-2 text-slate-700 shadow">
+                      {getResourceTypeIcon(selectedResource.type)}
+                    </div>
+                    {selectedResource.images.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={showPreviousImage}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-700 shadow hover:bg-white"
+                          aria-label="Previous resource image"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={showNextImage}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-700 shadow hover:bg-white"
+                          aria-label="Next resource image"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                        <span className="absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-semibold text-white">
+                          {selectedImageIndex + 1} / {selectedResource.images.length}
+                        </span>
+                      </>
+                    )}
                   </div>
                   {selectedResource.images.length > 1 && (
                     <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-                      {selectedResource.images.slice(1).map((imageUrl, imageIndex) => (
-                        <img
+                      {selectedResource.images.map((imageUrl, imageIndex) => (
+                        <button
                           key={`${imageUrl}-${imageIndex}`}
-                          src={imageUrl}
-                          alt={`${selectedResource.name} view ${imageIndex + 2}`}
-                          className="h-24 w-full rounded-lg border border-slate-200 object-cover"
-                        />
+                          type="button"
+                          onClick={() => setSelectedImageIndex(imageIndex)}
+                          className={`overflow-hidden rounded-lg border ${
+                            selectedImageIndex === imageIndex ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200'
+                          }`}
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`${selectedResource.name} thumbnail ${imageIndex + 1}`}
+                            className="h-24 w-full object-cover"
+                          />
+                        </button>
                       ))}
                     </div>
                   )}
@@ -469,10 +517,12 @@ const StudentResourceView = () => {
                     <MapPin className="w-4 h-4" />
                     <span className="text-sm">{selectedResource.location}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Users className="w-4 h-4" />
-                    <span className="text-sm">Capacity: {selectedResource.capacity} people</span>
-                  </div>
+                  {selectedResource.type !== 'EQUIPMENT' && (
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm">Capacity: {selectedResource.capacity} people</span>
+                    </div>
+                  )}
                   {selectedResource.seatingLayout && (
                     <>
                       <div className="flex items-center gap-2 text-slate-600">
@@ -604,17 +654,12 @@ const ResourceCard = ({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 group">
       <div className="relative h-48 overflow-hidden">
-        {resource.images && resource.images[0] ? (
-          <img 
-            src={resource.images[0]} 
-            alt={resource.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-            {getResourceTypeIcon(resource.type)}
-          </div>
-        )}
+        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
+          {getResourceTypeIcon(resource.type)}
+        </div>
+        <div className="absolute top-3 left-3 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm text-slate-700">
+          {getResourceTypeIcon(resource.type)}
+        </div>
         <button
           onClick={onToggleFavorite}
           className="absolute top-3 right-3 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform"
@@ -693,18 +738,13 @@ const ResourceListItem = ({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-all duration-200">
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
-          {resource.images && resource.images[0] ? (
-            <img 
-              src={resource.images[0]} 
-              alt={resource.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-              {getResourceTypeIcon(resource.type)}
-            </div>
-          )}
+        <div className="relative md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
+          <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
+            {getResourceTypeIcon(resource.type)}
+          </div>
+          <div className="absolute left-2 top-2 rounded-full bg-white/90 p-1.5 text-slate-700 shadow-sm">
+            {getResourceTypeIcon(resource.type)}
+          </div>
         </div>
         
         <div className="flex-1">
@@ -737,10 +777,12 @@ const ResourceListItem = ({
               <MapPin className="w-3 h-3" />
               <span>{resource.location}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              <span>Capacity: {resource.capacity}</span>
-            </div>
+            {resource.type !== 'EQUIPMENT' && (
+              <div className="flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                <span>Capacity: {resource.capacity}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               <span>Today: {getTodayHours(resource.availabilityWindows)}</span>
