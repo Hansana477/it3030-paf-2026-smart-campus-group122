@@ -40,6 +40,17 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/pending-technicians").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/users/*/approve").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").authenticated()
+
+                        .requestMatchers(HttpMethod.POST, "/tickets").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/tickets/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/tickets/*/comments").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/tickets/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/tickets/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/tickets/*/assign").hasAnyRole("ADMIN", "TECHNICIAN")
+                        .requestMatchers(HttpMethod.PATCH, "/tickets/*/status").hasAnyRole("ADMIN", "TECHNICIAN")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
