@@ -1,5 +1,6 @@
 import React, { useEffect, useEffectEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import loginImage from "../../assets/images/login.jpg";
 
 const initialForm = {
   email: "",
@@ -516,158 +517,148 @@ function Login() {
   };
 
   return (
-    <main className="min-h-screen px-4 py-10 sm:px-6">
-      <section className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="hidden overflow-hidden rounded-[32px] border border-white/60 bg-primary shadow-[0_24px_70px_rgba(15,23,42,0.16)] lg:block">
-          <div className="relative flex h-full min-h-[760px] flex-col overflow-hidden px-10 py-12 text-white">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(6,182,212,0.28),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.22),transparent_28%)]" />
-            <div className="relative z-10 flex h-full flex-col">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.35em] text-accent">Smart Campus</p>
-                <h1 className="mt-6 max-w-md text-5xl font-extrabold leading-[1.05]">Sign In</h1>
-                <p className="mt-5 max-w-xl text-lg leading-8 text-slate-200">
-                  Use your Smart Campus account to access the correct workspace with one clean login flow.
-                </p>
-              </div>
+    <main className="relative flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
+      <div className="absolute inset-0 z-0">
+        <img src={loginImage} alt="Background" className="h-full w-full object-cover blur-md brightness-50" />
+      </div>
 
-              <div className="mt-10 grid gap-4">
-                <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-accent">Role-aware access</p>
-                  <p className="mt-3 text-base leading-7 text-slate-100">
-                    Email and password sign-in automatically routes users to the correct dashboard after authentication.
-                  </p>
+      <section className="relative z-10 mx-auto grid w-full max-w-6xl gap-6 rounded-[32px] bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,0.20)] sm:p-6 lg:grid-cols-2 lg:p-8">
+        {/* Left Side: Image with overlaid text */}
+        <div className="relative hidden overflow-hidden rounded-[24px] lg:block">
+          <img src={loginImage} alt="Login Background" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="relative z-10 flex h-full flex-col justify-between p-10 text-white">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold tracking-wider">Selected Works</span>
+              <div className="flex items-center gap-4 text-sm font-semibold">
+                <Link to="/register" className="hover:text-slate-200">Sign Up</Link>
+                <Link to="/register" className="rounded-full border border-white/50 px-5 py-2 transition hover:bg-white/10">Join Us</Link>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-slate-300">
+                  <div className="flex h-full w-full items-center justify-center bg-accent text-lg font-bold text-white">S</div>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-accent">Google onboarding</p>
-                  <p className="mt-3 text-base leading-7 text-slate-100">
-                    New Google users will choose either
-                    {" "}
-                    <span className="font-semibold text-secondary">Student</span>
-                    {" "}
-                    or
-                    {" "}
-                    <span className="font-semibold text-accent">Technician</span>
-                    {" "}
-                    before their account is created.
-                  </p>
+                <div>
+                  <p className="text-base font-bold leading-none">Smart Campus</p>
+                  <p className="mt-1 text-sm text-slate-200">Portal Access</p>
                 </div>
               </div>
-
-              <div className="mt-auto rounded-3xl border border-white/10 bg-white/10 p-6 backdrop-blur">
-                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-accent">New here?</p>
-                <p className="mt-3 text-base text-slate-200">
-                  Create a new account if you do not have campus access yet.
-                </p>
-                <Link
-                  to="/register"
-                  className="mt-5 inline-flex items-center rounded-full bg-secondary px-5 py-3 text-sm font-semibold text-primary transition hover:bg-emerald-300"
-                >
-                  Create account
-                </Link>
+              <div className="flex gap-3">
+                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 transition hover:bg-white/10">
+                  <span className="sr-only">Previous</span>
+                  &larr;
+                </button>
+                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 transition hover:bg-white/10">
+                  <span className="sr-only">Next</span>
+                  &rarr;
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <section className="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur sm:p-8">
-          <div className="mb-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent lg:hidden">Smart Campus</p>
-            <h1 className="mt-4 text-4xl font-extrabold leading-tight text-primary">Sign In</h1>
-            <p className="mt-3 max-w-xl text-base leading-7 text-slate-500">
-              Enter your email and password. The system will detect your role and send you to the correct dashboard.
-            </p>
-            <p className="mt-4 max-w-xl text-base leading-7 text-slate-500">
-              You can also continue with Google. New Google users will choose Student or Technician after account selection.
-            </p>
-            <p className="mt-4 text-sm text-slate-500">
-              Need an account?
-              {" "}
-              <Link to="/register" className="font-semibold text-accent transition hover:text-primary">
-                Create one
-              </Link>
-            </p>
+        {/* Right Side: Form */}
+        <section className="relative flex flex-col px-4 py-6 sm:px-10 sm:py-8 lg:px-12 lg:py-10">
+          {/* Top Bar: Logo */}
+          <div className="flex items-center justify-between">
+            <p className="text-xl font-black tracking-tight text-slate-900">SMARTCAMPUS</p>
           </div>
 
-          <form className="grid gap-5" onSubmit={handleSubmit}>
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold text-primary">Email</span>
+          <div className="my-auto pt-10 pb-8 text-center sm:pt-16 sm:pb-12">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Hi User</h1>
+            <p className="mt-3 text-sm font-medium text-slate-500">Welcome to SMARTCAMPUS</p>
+
+            <form className="mx-auto mt-10 w-full max-w-sm grid gap-4 text-left" onSubmit={handleSubmit}>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="Enter email address"
-                className={inputClasses}
+                placeholder="Email"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/10"
                 required
               />
-            </label>
-
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold text-primary">Password</span>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Enter password"
-                className={inputClasses}
+                placeholder="Password"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/10"
                 required
               />
-            </label>
 
-            <div className="flex justify-end">
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-accent transition hover:text-cyan-600"
+                  onClick={() => {
+                    resetForgotPasswordState(formData.email.trim());
+                    setShowForgotPassword(true);
+                  }}
+                >
+                  Forgot password ?
+                </button>
+              </div>
+
+              {error ? (
+                <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+                  {error}
+                </p>
+              ) : null}
+              {successMessage ? (
+                <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  {successMessage}
+                </p>
+              ) : null}
+
+              <div className="my-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-100" />
+                <span className="text-xs font-medium text-slate-400">or</span>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <div id="google-signin-button" className="flex justify-center [&>div]:!w-full [&_iframe]:!w-full" />
+                </div>
+                {isGoogleSubmitting ? (
+                  <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                    Completing Google sign-in...
+                  </p>
+                ) : null}
+                {googleSetupError ? (
+                  <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+                    {googleSetupError}
+                  </p>
+                ) : null}
+              </div>
+
               <button
-                type="button"
-                className="text-sm font-semibold text-accent transition hover:text-primary"
-                onClick={() => {
-                  resetForgotPasswordState(formData.email.trim());
-                  setShowForgotPassword(true);
-                }}
+                type="submit"
+                className="mt-2 w-full rounded-xl bg-secondary px-4 py-3.5 text-sm font-semibold text-primary transition hover:bg-emerald-300 disabled:cursor-wait disabled:opacity-70"
+                disabled={isSubmitting}
               >
-                Forgot password?
+                {isSubmitting ? "Signing in..." : "Login"}
               </button>
+            </form>
+
+            <p className="mt-8 text-xs font-medium text-slate-500">
+              Don't have an account?{" "}
+              <Link to="/register" className="font-semibold text-accent hover:text-cyan-600">
+                Sign up
+              </Link>
+            </p>
+
+            <div className="mt-8 flex items-center justify-center gap-6 text-slate-400">
+              <button className="transition hover:text-slate-600"><span className="sr-only">Facebook</span><div className="h-4 w-4 rounded-full border border-current flex items-center justify-center text-[10px] font-bold">f</div></button>
+              <button className="transition hover:text-slate-600"><span className="sr-only">Twitter</span><div className="h-4 w-4 rounded-full border border-current flex items-center justify-center text-[10px] font-bold">t</div></button>
+              <button className="transition hover:text-slate-600"><span className="sr-only">LinkedIn</span><div className="h-4 w-4 rounded-full border border-current flex items-center justify-center text-[10px] font-bold">in</div></button>
+              <button className="transition hover:text-slate-600"><span className="sr-only">Instagram</span><div className="h-4 w-4 rounded-[4px] border border-current flex items-center justify-center text-[10px] font-bold">IG</div></button>
             </div>
-
-            {error ? (
-              <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {error}
-              </p>
-            ) : null}
-            {successMessage ? (
-              <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {successMessage}
-              </p>
-            ) : null}
-
-            <button
-              type="submit"
-              className="inline-flex w-full items-center justify-center rounded-2xl bg-primary px-5 py-4 text-base font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Signing in..." : "Login"}
-            </button>
-          </form>
-
-          <div className="my-8 flex items-center gap-4" aria-hidden="true">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-sm text-slate-400">or</span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4">
-              <div id="google-signin-button" className="flex justify-center" />
-            </div>
-            {isGoogleSubmitting ? (
-              <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                Completing Google sign-in...
-              </p>
-            ) : null}
-            {googleSetupError ? (
-              <p className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
-                {googleSetupError}
-              </p>
-            ) : null}
           </div>
         </section>
       </section>
