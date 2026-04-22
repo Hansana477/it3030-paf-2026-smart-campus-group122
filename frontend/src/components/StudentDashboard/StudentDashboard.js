@@ -58,6 +58,13 @@ function StudentDashboard() {
               <p className="mt-3 text-base leading-7 text-slate-500">
                 Use the profile icon in the header to update your personal details and change your password without leaving the dashboard.
               </p>
+              <button
+                type="button"
+                onClick={() => navigate("/student-resource-view")}
+                className="mt-5 inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Make Booking
+              </button>
             </div>
           </article>
 

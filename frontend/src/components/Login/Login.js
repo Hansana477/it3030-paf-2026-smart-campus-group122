@@ -32,6 +32,15 @@ const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).+$/;
 const passwordHelpText =
   "Password must include at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol.";
 
+function getGoogleState() {
+  window.smartCampusGoogleSignIn = window.smartCampusGoogleSignIn || {
+    initializedClientId: "",
+    credentialHandler: null,
+  };
+
+  return window.smartCampusGoogleSignIn;
+}
+
 function redirectToDashboard(role, navigate, setError) {
   if (role === "ADMIN") {
     navigate("/admin-dashboard");
@@ -108,7 +117,7 @@ function Login() {
   const [isForgotPasswordSubmitting, setIsForgotPasswordSubmitting] = useState(false);
 
   const completeGoogleLogin = async (credential, role = null) => {
-    const response = await fetch("http://localhost:8080/users/google", {
+    const response = await fetch("http://localhost:8082/users/google", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -198,11 +207,20 @@ function Login() {
         }
 
         buttonContainer.innerHTML = "";
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleCredentialResponse,
-          ux_mode: "popup",
-        });
+        const googleState = getGoogleState();
+        googleState.credentialHandler = handleGoogleCredentialResponse;
+
+        if (googleState.initializedClientId !== GOOGLE_CLIENT_ID) {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: (credentialResponse) => {
+              getGoogleState().credentialHandler?.(credentialResponse);
+            },
+            ux_mode: "popup",
+          });
+          googleState.initializedClientId = GOOGLE_CLIENT_ID;
+        }
+
         window.google.accounts.id.renderButton(buttonContainer, {
           theme: "outline",
           size: "large",
@@ -272,7 +290,7 @@ function Login() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("http://localhost:8080/users/login", {
+      const response = await fetch("http://localhost:8082/users/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -432,7 +450,7 @@ function Login() {
     setForgotPasswordSuccess("");
 
     try {
-      const response = await fetch("http://localhost:8080/users/forgot-password", {
+      const response = await fetch("http://localhost:8082/users/forgot-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -480,7 +498,7 @@ function Login() {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/users/reset-password", {
+      const response = await fetch("http://localhost:8082/users/reset-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

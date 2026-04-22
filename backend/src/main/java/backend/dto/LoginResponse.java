@@ -18,10 +18,7 @@ public class LoginResponse {
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
 
-    public LoginResponse(String message, String token, Long id, String fullName, String email, String role, String phone,
-                         boolean active, boolean approved, LocalDateTime createdAt, LocalDateTime lastLogin) {
-        this(message, token, false, null, id, fullName, email, role, phone, active, approved, createdAt, lastLogin);
-    }
+   
 
     public LoginResponse(String message, boolean requiresOtp, String otpDestination, String email, String role) {
         this(message, null, requiresOtp, otpDestination, null, null, email, role, null, false, false, null, null);

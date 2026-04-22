@@ -1,17 +1,15 @@
 package backend.repository;
 
 import backend.model.UserModel;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<UserModel, Long> {
+public interface UserRepository extends MongoRepository<UserModel, String> {
 
     Optional<UserModel> findByEmail(String email);
 
@@ -19,10 +17,12 @@ public interface UserRepository extends JpaRepository<UserModel, Long> {
 
     List<UserModel> findByRoleAndApproved(String role, boolean approved);
 
-    @Modifying
-    @Transactional
-    @Query("UPDATE UserModel u SET u.lastLogin = CURRENT_TIMESTAMP WHERE u.id = :id")
-    void updateLastLogin(@Param("id") Long id);
+    default void updateLastLogin(String id) {
+        findById(id).ifPresent(user -> {
+            user.setLastLogin(LocalDateTime.now());
+            save(user);
+        });
+    }
 
     boolean existsByEmail(String email);
 }
