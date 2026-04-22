@@ -7,6 +7,7 @@ import backend.dto.GoogleAuthResponse;
 import backend.dto.ChangePasswordRequest;
 import backend.dto.ForgotPasswordRequest;
 import backend.dto.ResetPasswordRequest;
+import backend.dto.VerifyLoginOtpRequest;
 import backend.exception.UserNotFoundException;
 import backend.model.UserModel;
 import backend.repository.UserRepository;
@@ -44,8 +45,10 @@ public class UserController {
     private static final String STUDENT_EMAIL_SUFFIX = "@my.sliit.lk";
     private static final String PASSWORD_REQUIREMENTS_MESSAGE =
             "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol";
-    private static final String PHONE_REQUIREMENTS_MESSAGE = "Phone number must contain exactly 10 digits";
+    private static final String PHONE_REQUIREMENTS_MESSAGE =
+            "Phone number must be a valid Sri Lankan mobile number such as +947XXXXXXXX or 07XXXXXXXX";
     private static final int RESET_CODE_EXPIRY_MINUTES = 15;
+    private static final int LOGIN_OTP_EXPIRY_MINUTES = 10;
     private static final SecureRandom RESET_CODE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
@@ -117,6 +120,17 @@ public class UserController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
 
+        if (shouldRequireLoginOtp(user)) {
+            issueLoginOtp(user);
+            return new LoginResponse(
+                    "A first-time login verification code has been sent to your email address.",
+                    true,
+                    user.getEmail(),
+                    user.getEmail(),
+                    user.getRole()
+            );
+        }
+
         userRepository.updateLastLogin(user.getId());
 
         UserModel loggedInUser = userRepository.findById(user.getId())
@@ -157,6 +171,39 @@ public class UserController {
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         return ResponseEntity.ok(buildLoginResponse("Login successful", loggedInUser));
+    }
+
+    @PostMapping("/verify-login-otp")
+    public LoginResponse verifyLoginOtp(@RequestBody VerifyLoginOtpRequest request) {
+        if (request.getEmail() == null || request.getEmail().isBlank()
+                || request.getCode() == null || request.getCode().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email and verification code are required");
+        }
+
+        String email = normalizeEmail(request.getEmail());
+        String otpCode = request.getCode().trim();
+
+        UserModel user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired verification code"));
+
+        if (!shouldRequireLoginOtp(user)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account does not require login verification");
+        }
+
+        if (!otpCode.equals(user.getLoginOtpCode())
+                || user.getLoginOtpExpiry() == null
+                || user.getLoginOtpExpiry().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired verification code");
+        }
+
+        clearLoginOtpState(user);
+        userRepository.save(user);
+        userRepository.updateLastLogin(user.getId());
+
+        UserModel loggedInUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new UserNotFoundException(user.getId()));
+
+        return buildLoginResponse("Login successful", loggedInUser);
     }
 
     @GetMapping
@@ -300,11 +347,21 @@ public class UserController {
             return null;
         }
 
-        if (!normalizedPhone.matches("\\d{10}")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, PHONE_REQUIREMENTS_MESSAGE);
+        String digitsOnlyPhone = normalizedPhone.replaceAll("\\s+", "");
+
+        if (digitsOnlyPhone.matches("\\+94\\d{9}")) {
+            return digitsOnlyPhone;
         }
 
-        return normalizedPhone;
+        if (digitsOnlyPhone.matches("94\\d{9}")) {
+            return "+" + digitsOnlyPhone;
+        }
+
+        if (digitsOnlyPhone.matches("0\\d{9}")) {
+            return "+94" + digitsOnlyPhone.substring(1);
+        }
+
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, PHONE_REQUIREMENTS_MESSAGE);
     }
 
     private boolean passwordMatches(String rawPassword, UserModel user) {
@@ -367,6 +424,8 @@ public class UserController {
         return new LoginResponse(
                 message,
                 jwtService.generateToken(user),
+                false,
+                null,
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
@@ -518,9 +577,37 @@ public class UserController {
         return String.format("%06d", RESET_CODE_RANDOM.nextInt(1_000_000));
     }
 
+    private boolean shouldRequireLoginOtp(UserModel user) {
+        return user != null
+                && "STUDENT".equals(user.getRole())
+                && user.getLastLogin() == null;
+    }
+
+    private void issueLoginOtp(UserModel user) {
+        String otpCode = generateResetCode();
+        user.setLoginOtpCode(otpCode);
+        user.setLoginOtpExpiry(LocalDateTime.now().plusMinutes(LOGIN_OTP_EXPIRY_MINUTES));
+        userRepository.save(user);
+
+        boolean sent = emailNotificationService.sendLoginOtpEmail(user, otpCode);
+        if (!sent) {
+            clearLoginOtpState(user);
+            userRepository.save(user);
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Login verification email could not be sent. Please check email configuration and try again."
+            );
+        }
+    }
+
     private void clearPasswordResetState(UserModel user) {
         user.setPasswordResetCode(null);
         user.setPasswordResetExpiry(null);
+    }
+
+    private void clearLoginOtpState(UserModel user) {
+        user.setLoginOtpCode(null);
+        user.setLoginOtpExpiry(null);
     }
 
     private UserModel getAuthenticatedUser(Authentication authentication) {

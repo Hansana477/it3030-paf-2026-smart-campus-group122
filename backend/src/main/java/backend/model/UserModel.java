@@ -40,6 +40,14 @@ public class UserModel {
     @JsonIgnore
     private LocalDateTime passwordResetExpiry;
 
+    @JsonIgnore
+    @org.springframework.data.mongodb.core.mapping.Field(name = "login_otp_code")
+    private String loginOtpCode;
+
+    @JsonIgnore
+    @org.springframework.data.mongodb.core.mapping.Field(name = "login_otp_expiry")
+    private LocalDateTime loginOtpExpiry;
+
     public UserModel() {
         this.createdAt = LocalDateTime.now();
     }
@@ -106,4 +114,10 @@ public class UserModel {
 
     public LocalDateTime getPasswordResetExpiry() { return passwordResetExpiry; }
     public void setPasswordResetExpiry(LocalDateTime passwordResetExpiry) { this.passwordResetExpiry = passwordResetExpiry; }
+
+    public String getLoginOtpCode() { return loginOtpCode; }
+    public void setLoginOtpCode(String loginOtpCode) { this.loginOtpCode = loginOtpCode; }
+
+    public LocalDateTime getLoginOtpExpiry() { return loginOtpExpiry; }
+    public void setLoginOtpExpiry(LocalDateTime loginOtpExpiry) { this.loginOtpExpiry = loginOtpExpiry; }
 }

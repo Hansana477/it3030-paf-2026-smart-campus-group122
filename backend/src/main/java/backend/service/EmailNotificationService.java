@@ -92,10 +92,29 @@ public class EmailNotificationService {
         sendEmail(user.getEmail(), "Smart Campus password reset code", body);
     }
 
-    private void sendEmail(String to, String subject, String body) {
+    public boolean sendLoginOtpEmail(UserModel user, String otpCode) {
+        if (user == null || !StringUtils.hasText(user.getEmail()) || !StringUtils.hasText(otpCode)) {
+            return false;
+        }
+
+        String body = String.format(
+                "Hello %s,%n%n"
+                        + "Use the following login verification code to complete your Smart Campus sign-in:%n"
+                        + "%s%n%n"
+                        + "This code will expire in 10 minutes.%n%n"
+                        + "If you did not try to sign in, you can ignore this email.%n%n"
+                        + "Smart Campus Team",
+                safeName(user),
+                otpCode
+        );
+
+        return sendEmail(user.getEmail(), "Smart Campus login verification code", body);
+    }
+
+    private boolean sendEmail(String to, String subject, String body) {
         if (!StringUtils.hasText(mailHost)) {
             logger.info("Skipping email to {} because SMTP host is not configured.", to);
-            return;
+            return false;
         }
 
         try {
@@ -106,8 +125,10 @@ public class EmailNotificationService {
             helper.setSubject(subject);
             helper.setText(body, false);
             mailSender.send(message);
+            return true;
         } catch (Exception ex) {
             logger.warn("Failed to send email to {}: {}", to, ex.getMessage());
+            return false;
         }
     }
 

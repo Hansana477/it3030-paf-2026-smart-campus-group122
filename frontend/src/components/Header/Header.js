@@ -1,11 +1,50 @@
 import React, { useEffect, useState } from "react";
 
+function formatPhoneForInput(phone) {
+  if (!phone) {
+    return "";
+  }
+
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10 && digits.startsWith("0")) {
+    return digits.slice(1);
+  }
+
+  if (digits.length === 11 && digits.startsWith("94")) {
+    return digits.slice(2);
+  }
+
+  return digits.slice(0, 9);
+}
+
+function normalizePhoneInput(value) {
+  const digits = value.replace(/\D/g, "");
+
+  if (digits.startsWith("94")) {
+    return digits.slice(2, 11);
+  }
+
+  if (digits.startsWith("0")) {
+    return digits.slice(1, 10);
+  }
+
+  return digits.slice(0, 9);
+}
+
+function toStoredPhone(phone) {
+  if (!phone) {
+    return "";
+  }
+
+  return `0${phone}`;
+}
+
 function createInitialProfile(user) {
   return {
     id: user?.id ?? null,
     fullName: user?.fullName ?? "",
     email: user?.email ?? "",
-    phone: user?.phone ?? "",
+    phone: formatPhoneForInput(user?.phone ?? ""),
     role: user?.role ?? "",
     active: user?.active ?? true,
     approved: user?.approved ?? true,
@@ -65,9 +104,9 @@ function formatDateTime(value) {
 
 const fieldClasses =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
-const phonePattern = /^\d{10}$/;
+const phonePattern = /^\d{9}$/;
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).+$/;
-const phoneHelpText = "Phone number must contain exactly 10 digits.";
+const phoneHelpText = "Phone number must contain 9 digits after +94.";
 const passwordHelpText =
   "Password must include at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol.";
 
@@ -112,7 +151,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     const { name, value } = event.target;
     setProfileForm((current) => ({
       ...current,
-      [name]: name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value,
+      [name]: name === "phone" ? normalizePhoneInput(value) : value,
     }));
   };
 
@@ -157,7 +196,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
         body: JSON.stringify({
           fullName: profileForm.fullName.trim(),
           email: profileUser.email,
-          phone: trimmedPhone,
+          phone: toStoredPhone(trimmedPhone),
           role: profileUser.role,
           active: profileUser.active,
           approved: profileUser.approved,
@@ -434,17 +473,22 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
 
                   <label className="mt-5 grid gap-2">
                     <span className="text-sm font-semibold text-primary">Phone</span>
-                    <input
-                      type="text"
-                      name="phone"
-                      value={profileForm.phone}
-                      onChange={handleProfileChange}
-                      placeholder="Add phone number"
-                      inputMode="numeric"
-                      maxLength="10"
-                      pattern={phonePattern.source}
-                      className={fieldClasses}
-                    />
+                    <div className="flex overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 transition focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/10">
+                      <span className="inline-flex items-center border-r border-slate-200 px-4 py-3.5 text-base font-semibold text-slate-500">
+                        +94
+                      </span>
+                      <input
+                        type="text"
+                        name="phone"
+                        value={profileForm.phone}
+                        onChange={handleProfileChange}
+                        placeholder="7XXXXXXXX"
+                        inputMode="numeric"
+                        maxLength="9"
+                        pattern={phonePattern.source}
+                        className="w-full bg-transparent px-4 py-3.5 text-base text-primary outline-none"
+                      />
+                    </div>
                     <p className="text-sm leading-6 text-slate-500">{phoneHelpText}</p>
                   </label>
 

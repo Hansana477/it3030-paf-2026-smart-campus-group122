@@ -39,6 +39,7 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/users",
                                 "/users/login",
+                                "/users/verify-login-otp",
                                 "/users/google",
                                 "/users/forgot-password",
                                 "/users/reset-password"
