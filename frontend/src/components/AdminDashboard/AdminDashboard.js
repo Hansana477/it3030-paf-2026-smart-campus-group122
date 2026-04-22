@@ -48,12 +48,12 @@ function AdminDashboard() {
 
       try {
         const [usersResponse, pendingResponse] = await Promise.all([
-          fetch("http://localhost:8080/users", {
+          fetch("http://localhost:8082/users", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetch("http://localhost:8080/users/pending-technicians", {
+          fetch("http://localhost:8082/users/pending-technicians", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -95,7 +95,7 @@ function AdminDashboard() {
     setError("");
 
     try {
-      const response = await fetch(`http://localhost:8080/users/${userId}/approve`, {
+      const response = await fetch(`http://localhost:8082/users/${userId}/approve`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -185,7 +185,7 @@ function AdminDashboard() {
         throw new Error(phoneHelpText);
       }
 
-      const response = await fetch(`http://localhost:8080/users/${editingUser.id}`, {
+      const response = await fetch(`http://localhost:8082/users/${editingUser.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -257,7 +257,7 @@ function AdminDashboard() {
     setError("");
 
     try {
-      const response = await fetch(`http://localhost:8080/users/${listedUser.id}`, {
+      const response = await fetch(`http://localhost:8082/users/${listedUser.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -405,6 +405,13 @@ function AdminDashboard() {
                   {pendingTechnicians.length} technician account(s) are still waiting for admin approval.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => navigate("/admin-resource-management")}
+                className="inline-flex items-center justify-center rounded-2xl bg-secondary px-5 py-3.5 text-sm font-semibold text-primary transition hover:bg-emerald-300"
+              >
+                Manage Catalogue
+              </button>
             </div>
           </article>
         </section>

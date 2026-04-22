@@ -34,164 +34,6 @@ import {
   HeartOff
 } from 'lucide-react';
 
-// ==============================================
-// DUMMY DATA (Same as admin side)
-// ==============================================
-const RESOURCES_DATA = [
-  {
-    id: '1',
-    name: 'Main Lecture Hall A',
-    type: 'LECTURE_HALL',
-    location: 'Building A, Floor 1',
-    capacity: 120,
-    status: 'ACTIVE',
-    description: 'Large lecture hall with projector and sound system. Perfect for lectures, presentations, and large group activities.',
-    amenities: ['Projector', 'Sound System', 'Air Conditioning', 'Whiteboard', 'WiFi', 'Power Outlets'],
-    availabilityWindows: [
-      { dayOfWeek: 1, startTime: '08:00', endTime: '20:00' },
-      { dayOfWeek: 2, startTime: '08:00', endTime: '20:00' },
-      { dayOfWeek: 3, startTime: '08:00', endTime: '20:00' },
-      { dayOfWeek: 4, startTime: '08:00', endTime: '20:00' },
-      { dayOfWeek: 5, startTime: '08:00', endTime: '18:00' },
-    ],
-    images: ['https://images.unsplash.com/photo-1586473219010-2ffc57b0d282?w=500&h=300&fit=crop'],
-    rating: 4.5,
-    reviews: 128,
-    seatingLayout: {
-      rows: 8,
-      cols: 15,
-      seats: Array.from({ length: 120 }, (_, i) => ({
-        id: `seat-${i+1}`,
-        number: `${String.fromCharCode(65 + Math.floor(i / 15))}${(i % 15) + 1}`,
-        status: i < 100 ? 'AVAILABLE' : 'OCCUPIED',
-        hasPower: i % 5 === 0,
-      })),
-    },
-  },
-  {
-    id: '2',
-    name: 'Computer Lab 301',
-    type: 'LAB',
-    location: 'Building C, Floor 3',
-    capacity: 30,
-    status: 'ACTIVE',
-    description: 'Modern computer lab equipped with high-performance workstations, specialized software for programming and design.',
-    amenities: ['Computers', 'Printers', 'Software Licenses', 'Air Conditioning', 'WiFi', 'Scanning'],
-    availabilityWindows: [
-      { dayOfWeek: 1, startTime: '09:00', endTime: '18:00' },
-      { dayOfWeek: 2, startTime: '09:00', endTime: '18:00' },
-      { dayOfWeek: 3, startTime: '09:00', endTime: '18:00' },
-      { dayOfWeek: 4, startTime: '09:00', endTime: '18:00' },
-      { dayOfWeek: 5, startTime: '09:00', endTime: '17:00' },
-    ],
-    images: ['https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=500&h=300&fit=crop'],
-    rating: 4.8,
-    reviews: 95,
-    seatingLayout: {
-      rows: 6,
-      cols: 5,
-      seats: Array.from({ length: 30 }, (_, i) => ({
-        id: `seat-${i+1}`,
-        number: `WS${(i+1).toString().padStart(2, '0')}`,
-        status: 'AVAILABLE',
-        hasPower: true,
-      })),
-    },
-  },
-  {
-    id: '3',
-    name: 'Conference Room B',
-    type: 'MEETING_ROOM',
-    location: 'Building B, Floor 2',
-    capacity: 12,
-    status: 'ACTIVE',
-    description: 'Executive meeting room with video conferencing capabilities. Ideal for team meetings and client presentations.',
-    amenities: ['Video Conference', 'Smart Board', 'Coffee Machine', 'Whiteboard', 'WiFi', 'Power Outlets'],
-    availabilityWindows: [
-      { dayOfWeek: 1, startTime: '08:00', endTime: '19:00' },
-      { dayOfWeek: 2, startTime: '08:00', endTime: '19:00' },
-      { dayOfWeek: 3, startTime: '08:00', endTime: '19:00' },
-      { dayOfWeek: 4, startTime: '08:00', endTime: '19:00' },
-      { dayOfWeek: 5, startTime: '08:00', endTime: '18:00' },
-    ],
-    images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=500&h=300&fit=crop'],
-    rating: 4.7,
-    reviews: 64,
-  },
-  {
-    id: '4',
-    name: 'Portable Projector',
-    type: 'EQUIPMENT',
-    location: 'AV Room, Building A',
-    capacity: 1,
-    status: 'ACTIVE',
-    description: 'Epson Portable Projector, 4000 lumens. Perfect for presentations and movie screenings.',
-    amenities: ['HDMI Cable', 'VGA Cable', 'Remote Control', 'Carry Case', 'Tripod'],
-    availabilityWindows: [
-      { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' },
-      { dayOfWeek: 2, startTime: '09:00', endTime: '17:00' },
-      { dayOfWeek: 3, startTime: '09:00', endTime: '17:00' },
-      { dayOfWeek: 4, startTime: '09:00', endTime: '17:00' },
-      { dayOfWeek: 5, startTime: '09:00', endTime: '16:00' },
-    ],
-    images: ['https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=500&h=300&fit=crop'],
-    rating: 4.3,
-    reviews: 42,
-  },
-  {
-    id: '5',
-    name: 'Silent Study Area',
-    type: 'STUDY_AREA',
-    location: 'Library, Floor 2',
-    capacity: 50,
-    status: 'ACTIVE',
-    description: 'Quiet zone for individual study. Strict silence maintained for optimal concentration.',
-    amenities: ['WiFi', 'Power Outlets', 'Lockers', 'Water Dispenser', 'Study Desks', 'Reading Lamps'],
-    availabilityWindows: [
-      { dayOfWeek: 0, startTime: '10:00', endTime: '22:00' },
-      { dayOfWeek: 1, startTime: '08:00', endTime: '23:00' },
-      { dayOfWeek: 2, startTime: '08:00', endTime: '23:00' },
-      { dayOfWeek: 3, startTime: '08:00', endTime: '23:00' },
-      { dayOfWeek: 4, startTime: '08:00', endTime: '23:00' },
-      { dayOfWeek: 5, startTime: '08:00', endTime: '20:00' },
-      { dayOfWeek: 6, startTime: '10:00', endTime: '18:00' },
-    ],
-    images: ['https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=500&h=300&fit=crop'],
-    rating: 4.9,
-    reviews: 203,
-    seatingLayout: {
-      rows: 10,
-      cols: 5,
-      seats: Array.from({ length: 50 }, (_, i) => ({
-        id: `seat-${i+1}`,
-        number: `S${(i+1).toString().padStart(2, '0')}`,
-        status: i < 35 ? 'AVAILABLE' : (i < 45 ? 'RESERVED' : 'OCCUPIED'),
-        hasPower: i % 2 === 0,
-      })),
-    },
-  },
-  {
-    id: '6',
-    name: 'Group Study Room 204',
-    type: 'STUDY_AREA',
-    location: 'Library, Floor 2',
-    capacity: 8,
-    status: 'MAINTENANCE',
-    description: 'Collaborative study room with whiteboard. Perfect for group projects and discussions.',
-    amenities: ['Whiteboard', 'Power Outlets', 'Table', 'Chairs', 'WiFi', 'Markers'],
-    availabilityWindows: [
-      { dayOfWeek: 1, startTime: '09:00', endTime: '21:00' },
-      { dayOfWeek: 2, startTime: '09:00', endTime: '21:00' },
-      { dayOfWeek: 3, startTime: '09:00', endTime: '21:00' },
-      { dayOfWeek: 4, startTime: '09:00', endTime: '21:00' },
-      { dayOfWeek: 5, startTime: '09:00', endTime: '19:00' },
-    ],
-    images: ['https://images.unsplash.com/photo-1577896851231-70ef18881754?w=500&h=300&fit=crop'],
-    rating: 4.2,
-    reviews: 87,
-  },
-];
-
 const AMENITY_ICONS = {
   'WiFi': <Wifi className="w-4 h-4" />,
   'Power Outlets': <Zap className="w-4 h-4" />,
@@ -204,15 +46,18 @@ const AMENITY_ICONS = {
   'Whiteboard': <Table className="w-4 h-4" />,
 };
 
+const API_BASE_URL = 'http://localhost:8082';
+
 const StudentResourceView = () => {
-  const [resources] = useState(RESOURCES_DATA);
+  const [resources, setResources] = useState([]);
   const [selectedResource, setSelectedResource] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
   const [selectedAmenity, setSelectedAmenity] = useState('ALL');
   const [viewMode, setViewMode] = useState('grid');
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
@@ -222,16 +67,39 @@ const StudentResourceView = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
+  useEffect(() => {
+    const loadResources = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/resources?status=ACTIVE`);
+        const data = await response.json().catch(() => []);
+
+        if (!response.ok) {
+          throw new Error(data?.message || data?.error || 'Failed to load resources');
+        }
+
+        setResources(Array.isArray(data) ? data : []);
+      } catch (error) {
+        showNotificationMessage(error.message || 'Failed to load resources', 'error');
+        setResources([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadResources();
+  }, []);
+
   // Get unique amenities for filter
-  const allAmenities = ['ALL', ...new Set(resources.flatMap(r => r.amenities))];
+  const allAmenities = ['ALL', ...new Set(resources.flatMap(r => r.amenities || []))];
 
   // Filter resources
   const filteredResources = resources.filter(resource => {
-    const matchesSearch = resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          resource.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          resource.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (resource.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (resource.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (resource.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'ALL' || resource.type === selectedType;
-    const matchesAmenity = selectedAmenity === 'ALL' || resource.amenities.includes(selectedAmenity);
+    const matchesAmenity = selectedAmenity === 'ALL' || (resource.amenities || []).includes(selectedAmenity);
     const matchesStatus = resource.status === 'ACTIVE'; // Only show active resources to students
     return matchesSearch && matchesType && matchesAmenity && matchesStatus;
   });
@@ -257,7 +125,20 @@ const StudentResourceView = () => {
 
   const handleViewDetails = (resource) => {
     setSelectedResource(resource);
+    setSelectedImageIndex(0);
     setShowDetailsModal(true);
+  };
+
+  const showPreviousImage = () => {
+    const imageCount = selectedResource?.images?.length || 0;
+    if (imageCount < 2) return;
+    setSelectedImageIndex((current) => (current - 1 + imageCount) % imageCount);
+  };
+
+  const showNextImage = () => {
+    const imageCount = selectedResource?.images?.length || 0;
+    if (imageCount < 2) return;
+    setSelectedImageIndex((current) => (current + 1) % imageCount);
   };
 
   const toggleFavorite = (resourceId) => {
@@ -306,8 +187,24 @@ const StudentResourceView = () => {
 
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const today = new Date().getDay();
+  const getDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const todayDate = getDateKey(new Date());
+  const formatAvailabilityDate = (date) => {
+    if (!date) return null;
+    return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
   const getTodayHours = (availabilityWindows) => {
-    const todayWindow = availabilityWindows?.find(w => w.dayOfWeek === today);
+    const todayWindow = availabilityWindows?.find(w => w.date === todayDate) ||
+                        availabilityWindows?.find(w => !w.date && w.dayOfWeek === today);
     if (todayWindow) {
       return `${todayWindow.startTime} - ${todayWindow.endTime}`;
     }
@@ -564,14 +461,62 @@ const StudentResourceView = () => {
             </div>
             
             <div className="p-6">
-              {/* Image */}
-              {selectedResource.images && selectedResource.images[0] && (
-                <div className="mb-6 rounded-xl overflow-hidden">
-                  <img 
-                    src={selectedResource.images[0]} 
-                    alt={selectedResource.name}
-                    className="w-full h-64 object-cover"
-                  />
+              {/* Images */}
+              {selectedResource.images?.length > 0 && (
+                <div className="mb-6">
+                  <div className="relative rounded-xl overflow-hidden bg-slate-100">
+                    <img
+                      src={selectedResource.images[selectedImageIndex]}
+                      alt={`${selectedResource.name} view ${selectedImageIndex + 1}`}
+                      className="w-full h-64 object-cover"
+                    />
+                    <div className="absolute left-3 top-3 rounded-lg bg-white/90 p-2 text-slate-700 shadow">
+                      {getResourceTypeIcon(selectedResource.type)}
+                    </div>
+                    {selectedResource.images.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={showPreviousImage}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-700 shadow hover:bg-white"
+                          aria-label="Previous resource image"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={showNextImage}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-slate-700 shadow hover:bg-white"
+                          aria-label="Next resource image"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                        <span className="absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-semibold text-white">
+                          {selectedImageIndex + 1} / {selectedResource.images.length}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {selectedResource.images.length > 1 && (
+                    <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      {selectedResource.images.map((imageUrl, imageIndex) => (
+                        <button
+                          key={`${imageUrl}-${imageIndex}`}
+                          type="button"
+                          onClick={() => setSelectedImageIndex(imageIndex)}
+                          className={`overflow-hidden rounded-lg border ${
+                            selectedImageIndex === imageIndex ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200'
+                          }`}
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`${selectedResource.name} thumbnail ${imageIndex + 1}`}
+                            className="h-24 w-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -588,10 +533,12 @@ const StudentResourceView = () => {
                     <MapPin className="w-4 h-4" />
                     <span className="text-sm">{selectedResource.location}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Users className="w-4 h-4" />
-                    <span className="text-sm">Capacity: {selectedResource.capacity} people</span>
-                  </div>
+                  {selectedResource.type !== 'EQUIPMENT' && (
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Users className="w-4 h-4" />
+                      <span className="text-sm">Capacity: {selectedResource.capacity} people</span>
+                    </div>
+                  )}
                   {selectedResource.seatingLayout && (
                     <>
                       <div className="flex items-center gap-2 text-slate-600">
@@ -645,8 +592,11 @@ const StudentResourceView = () => {
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {selectedResource.availabilityWindows?.map((window, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-2 bg-white rounded-lg border border-slate-200">
+                      <div key={idx} className="flex flex-col gap-1 p-2 bg-white rounded-lg border border-slate-200">
                         <span className="text-sm font-medium text-slate-700">{daysOfWeek[window.dayOfWeek]}</span>
+                        {window.date && (
+                          <span className="text-xs text-slate-400">{formatAvailabilityDate(window.date)}</span>
+                        )}
                         <span className="text-sm text-slate-500">{window.startTime} - {window.endTime}</span>
                       </div>
                     ))}
@@ -723,17 +673,12 @@ const ResourceCard = ({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 group">
       <div className="relative h-48 overflow-hidden">
-        {resource.images && resource.images[0] ? (
-          <img 
-            src={resource.images[0]} 
-            alt={resource.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-            {getResourceTypeIcon(resource.type)}
-          </div>
-        )}
+        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
+          {getResourceTypeIcon(resource.type)}
+        </div>
+        <div className="absolute top-3 left-3 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm text-slate-700">
+          {getResourceTypeIcon(resource.type)}
+        </div>
         <button
           onClick={onToggleFavorite}
           className="absolute top-3 right-3 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform"
@@ -812,18 +757,13 @@ const ResourceListItem = ({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-all duration-200">
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
-          {resource.images && resource.images[0] ? (
-            <img 
-              src={resource.images[0]} 
-              alt={resource.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-              {getResourceTypeIcon(resource.type)}
-            </div>
-          )}
+        <div className="relative md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
+          <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
+            {getResourceTypeIcon(resource.type)}
+          </div>
+          <div className="absolute left-2 top-2 rounded-full bg-white/90 p-1.5 text-slate-700 shadow-sm">
+            {getResourceTypeIcon(resource.type)}
+          </div>
         </div>
         
         <div className="flex-1">
@@ -856,10 +796,12 @@ const ResourceListItem = ({
               <MapPin className="w-3 h-3" />
               <span>{resource.location}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
-              <span>Capacity: {resource.capacity}</span>
-            </div>
+            {resource.type !== 'EQUIPMENT' && (
+              <div className="flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                <span>Capacity: {resource.capacity}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               <span>Today: {getTodayHours(resource.availabilityWindows)}</span>

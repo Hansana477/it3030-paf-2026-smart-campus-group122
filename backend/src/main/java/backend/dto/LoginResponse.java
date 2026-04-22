@@ -6,7 +6,7 @@ public class LoginResponse {
 
     private String message;
     private String token;
-    private Long id;
+    private String id;
     private String fullName;
     private String email;
     private String role;
@@ -16,7 +16,7 @@ public class LoginResponse {
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
 
-    public LoginResponse(String message, String token, Long id, String fullName, String email, String role, String phone,
+    public LoginResponse(String message, String token, String id, String fullName, String email, String role, String phone,
                          boolean active, boolean approved, LocalDateTime createdAt, LocalDateTime lastLogin) {
         this.message = message;
         this.token = token;
@@ -39,7 +39,7 @@ public class LoginResponse {
         return token;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 

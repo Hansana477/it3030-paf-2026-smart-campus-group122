@@ -27,7 +27,7 @@ function TechnicianDashboard() {
       }
 
       try {
-        const response = await fetch(`http://localhost:8080/users/${user.id}`, {
+        const response = await fetch(`http://localhost:8082/users/${user.id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

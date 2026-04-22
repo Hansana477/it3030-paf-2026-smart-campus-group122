@@ -148,7 +148,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
         throw new Error(phoneHelpText);
       }
 
-      const response = await fetch(`http://localhost:8080/users/${profileUser.id}`, {
+      const response = await fetch(`http://localhost:8082/users/${profileUser.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -219,7 +219,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setPasswordSuccess("");
 
     try {
-      const response = await fetch(`http://localhost:8080/users/${profileUser.id}/password`, {
+      const response = await fetch(`http://localhost:8082/users/${profileUser.id}/password`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -272,7 +272,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setProfileSuccess("");
 
     try {
-      const response = await fetch(`http://localhost:8080/users/${profileUser.id}`, {
+      const response = await fetch(`http://localhost:8082/users/${profileUser.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

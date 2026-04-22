@@ -150,7 +150,7 @@ public class UserController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User account is inactive");
         }
 
-        Long userId = user.getId();
+        String userId = user.getId();
         userRepository.updateLastLogin(userId);
 
         UserModel loggedInUser = userRepository.findById(userId)
@@ -171,7 +171,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public UserModel getUserById(@PathVariable Long id, Authentication authentication) {
+    public UserModel getUserById(@PathVariable String id, Authentication authentication) {
         requireSelfOrAdmin(authentication, id);
         return userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id));
@@ -197,7 +197,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public UserModel updateUser(@RequestBody UserModel updatedUser, @PathVariable Long id, Authentication authentication) {
+    public UserModel updateUser(@RequestBody UserModel updatedUser, @PathVariable String id, Authentication authentication) {
         UserModel authenticatedUser = requireSelfOrAdmin(authentication, id);
         boolean isAdmin = isAdmin(authenticatedUser);
 
@@ -380,7 +380,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/approve")
-    public UserModel approveTechnician(@PathVariable Long id, Authentication authentication) {
+    public UserModel approveTechnician(@PathVariable String id, Authentication authentication) {
         requireAdmin(authentication);
         return userRepository.findById(id)
                 .map(user -> {
@@ -398,7 +398,7 @@ public class UserController {
 
     @PatchMapping("/{id}/password")
     public Map<String, String> changePassword(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody ChangePasswordRequest request,
             Authentication authentication
     ) {
@@ -492,7 +492,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/last-login")
-    public UserModel updateLastLogin(@PathVariable Long id, Authentication authentication) {
+    public UserModel updateLastLogin(@PathVariable String id, Authentication authentication) {
         requireSelfOrAdmin(authentication, id);
         if (!userRepository.existsById(id)) {
             throw new UserNotFoundException(id);
@@ -504,7 +504,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public Map<String, String> deleteUser(@PathVariable Long id, Authentication authentication) {
+    public Map<String, String> deleteUser(@PathVariable String id, Authentication authentication) {
         requireSelfOrAdmin(authentication, id);
 
         UserModel user = userRepository.findById(id)
@@ -531,7 +531,7 @@ public class UserController {
         return authenticatedUser;
     }
 
-    private UserModel requireSelfOrAdmin(Authentication authentication, Long targetUserId) {
+    private UserModel requireSelfOrAdmin(Authentication authentication, String targetUserId) {
         UserModel authenticatedUser = getAuthenticatedUser(authentication);
         if (!isAdmin(authenticatedUser) && !authenticatedUser.getId().equals(targetUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission for this action");

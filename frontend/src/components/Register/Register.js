@@ -84,7 +84,7 @@ function Register() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("http://localhost:8080/users", {
+      const response = await fetch("http://localhost:8082/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
