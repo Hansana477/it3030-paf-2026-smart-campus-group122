@@ -142,6 +142,15 @@ const StudentMyBookings = () => {
     }
   };
 
+  const canStudentCancel = (booking) => {
+    if (!['PENDING', 'APPROVED'].includes(booking.status) || !booking.date || !booking.startTime) {
+      return false;
+    }
+    const bookingStart = new Date(`${booking.date}T${booking.startTime}:00`);
+    const cutoff = new Date(bookingStart.getTime() - 3 * 60 * 60 * 1000);
+    return new Date() <= cutoff;
+  };
+
   const statusClass = (status) => {
     switch (status) {
       case 'APPROVED': return 'bg-emerald-100 text-emerald-700';
@@ -258,6 +267,16 @@ const StudentMyBookings = () => {
 
         {message && <p className="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{message}</p>}
         {loading && <p className="mt-8 flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading bookings...</p>}
+
+        <section className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Privacy & Policy</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-900">Cancellation Policy</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Students can cancel a pending or approved booking only if the cancellation is made at least
+            <strong> 3 hours before </strong>
+            the booking start time. If the booking starts in less than 3 hours, contact an admin for help.
+          </p>
+        </section>
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -389,9 +408,15 @@ const StudentMyBookings = () => {
                       <button onClick={() => openReschedule(booking)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 font-semibold text-emerald-700 hover:bg-emerald-100">
                         <RefreshCw className="h-4 w-4" /> Reschedule
                       </button>
-                      <button onClick={() => cancelBooking(booking)} className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 font-semibold text-red-600 hover:bg-red-100">
-                        <XCircle className="h-4 w-4" /> Cancel
-                      </button>
+                      {canStudentCancel(booking) ? (
+                        <button onClick={() => cancelBooking(booking)} className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 font-semibold text-red-600 hover:bg-red-100">
+                          <XCircle className="h-4 w-4" /> Cancel
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
+                          <XCircle className="h-4 w-4" /> Cancel locked
+                        </span>
+                      )}
                     </>
                   )}
                 </div>

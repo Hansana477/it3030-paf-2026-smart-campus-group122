@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,7 @@ import java.util.UUID;
 public class BookingController {
 
     private static final List<String> CONFLICT_STATUSES = List.of("PENDING", "APPROVED");
+    private static final int STUDENT_CANCELLATION_MIN_HOURS = 3;
 
     private final BookingRepository bookingRepository;
     private final ResourceRepository resourceRepository;
@@ -166,6 +168,7 @@ public class BookingController {
         if (!"APPROVED".equals(booking.getStatus()) && !"PENDING".equals(booking.getStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending or approved bookings can be cancelled");
         }
+        enforceCancellationPolicy(user, booking);
         booking.setStatus("CANCELLED");
         booking.setCancellationReason(body == null ? null : body.get("reason"));
         booking.applyDefaults();
@@ -375,6 +378,28 @@ public class BookingController {
     private void requireOwnerOrAdmin(UserModel user, BookingModel booking) {
         if (!"ADMIN".equals(user.getRole()) && !user.getId().equals(booking.getRequesterId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot update this booking");
+        }
+    }
+
+    private void enforceCancellationPolicy(UserModel user, BookingModel booking) {
+        if ("ADMIN".equals(user.getRole())) {
+            return;
+        }
+        try {
+            LocalDateTime bookingStart = LocalDateTime.of(
+                    LocalDate.parse(booking.getDate()),
+                    LocalTime.parse(booking.getStartTime())
+            );
+            if (LocalDateTime.now().plusHours(STUDENT_CANCELLATION_MIN_HOURS).isAfter(bookingStart)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Cancellation must be done at least 3 hours before the booking start time"
+                );
+            }
+        } catch (ResponseStatusException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid booking date or time for cancellation");
         }
     }
 }

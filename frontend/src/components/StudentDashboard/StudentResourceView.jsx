@@ -68,6 +68,7 @@ const StudentResourceView = () => {
   const [selectedSeatIds, setSelectedSeatIds] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [bookingPurpose, setBookingPurpose] = useState('');
+  const [acceptedBookingPolicy, setAcceptedBookingPolicy] = useState(false);
   const [resourceBookings, setResourceBookings] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [selectedResourceReviews, setSelectedResourceReviews] = useState([]);
@@ -258,6 +259,7 @@ const StudentResourceView = () => {
     setSelectedSeatIds([]);
     setSelectedSlot(null);
     setBookingPurpose('');
+    setAcceptedBookingPolicy(false);
     setResourceBookings([]);
   };
 
@@ -267,6 +269,7 @@ const StudentResourceView = () => {
     setSelectedSeatIds([]);
     setSelectedSlot(null);
     setBookingPurpose('');
+    setAcceptedBookingPolicy(false);
     setResourceBookings([]);
   };
   const getAvailabilityDateRange = (window) => {
@@ -453,6 +456,10 @@ const StudentResourceView = () => {
     }
     if (selectedSeatIds.length < 1 || selectedSeatIds.length > 4) {
       showNotificationMessage('Select 1 to 4 seats', 'error');
+      return;
+    }
+    if (!acceptedBookingPolicy) {
+      showNotificationMessage('Please agree to the cancellation policy before booking', 'error');
       return;
     }
     if (selectedSeatIds.some(seatId => isSlotBookedForSeat(seatId, selectedSlot))) {
@@ -1132,6 +1139,20 @@ const StudentResourceView = () => {
                   )}
                 </>
               )}
+
+              <label className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={acceptedBookingPolicy}
+                  onChange={(event) => setAcceptedBookingPolicy(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>
+                  I agree to the booking terms and cancellation policy. Cancellations must be made at least
+                  <strong> 3 hours before </strong>
+                  the booking start time.
+                </span>
+              </label>
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3">
@@ -1140,7 +1161,7 @@ const StudentResourceView = () => {
               </button>
               <button
                 onClick={submitBookingRequest}
-                disabled={bookingLoading}
+                disabled={bookingLoading || !acceptedBookingPolicy}
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2 font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
               >
                 {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
