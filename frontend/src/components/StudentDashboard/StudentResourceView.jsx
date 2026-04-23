@@ -284,6 +284,12 @@ const StudentResourceView = () => {
     const [hours, mins] = time.split(':').map(Number);
     return hours * 60 + mins;
   };
+  const isPastSlot = (date, slot) => {
+    if (!date || !slot) return false;
+    const now = new Date();
+    const slotEnd = new Date(`${date}T${slot.endTime}:00`);
+    return slotEnd <= now;
+  };
   const getAvailabilityForDate = (resource, date) => {
     if (!resource || !date) return null;
     return resource.availabilityWindows?.find(window => {
@@ -337,7 +343,10 @@ const StudentResourceView = () => {
     if (matchingBookings.some(booking => booking.status === 'PENDING')) return 'PENDING';
     return null;
   };
-  const getSlotStateClasses = (slotStatus, selected) => {
+  const getSlotStateClasses = (slotStatus, selected, past) => {
+    if (past) {
+      return 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed';
+    }
     if (slotStatus === 'APPROVED') {
       return 'border border-red-200 bg-red-100 text-red-700 cursor-not-allowed';
     }
@@ -366,6 +375,13 @@ const StudentResourceView = () => {
   const formatSeatType = (type) => {
     if (!type) return 'Standard';
     return type.toLowerCase().split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  };
+  const getSeatFeatureLabel = (seat) => {
+    const features = [];
+    if (seat.hasPower) features.push('Power point');
+    if (seat.hasUsb) features.push('USB port');
+    if (seat.isAccessible || seat.accessible) features.push('Accessible');
+    return features.length ? features.join(' • ') : 'No extras';
   };
   const toggleSeatSelection = (seat) => {
     if (seat.status && seat.status !== 'AVAILABLE') {
@@ -968,6 +984,8 @@ const StudentResourceView = () => {
                       <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-500" /> Available</span>
                       <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-emerald-600" /> Selected</span>
                       <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-400" /> Unavailable</span>
+                      <span className="inline-flex items-center gap-1"><Zap className="h-4 w-4 text-yellow-500" /> Power point</span>
+                      <span className="inline-flex items-center gap-1"><Monitor className="h-4 w-4 text-blue-500" /> USB port</span>
                     </div>
                     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div
@@ -993,6 +1011,10 @@ const StudentResourceView = () => {
                               <Armchair className={`h-5 w-5 ${getSeatIconClasses(seat, isSelected)}`} />
                               <span>{seat.number}</span>
                               <span className="mt-0.5 max-w-full truncate text-[10px] font-medium opacity-75">{formatSeatType(seat.type)}</span>
+                              <span className="mt-0.5 flex gap-1">
+                                {seat.hasPower && <Zap className="h-3 w-3 text-yellow-500" />}
+                                {seat.hasUsb && <Monitor className="h-3 w-3 text-blue-500" />}
+                              </span>
                             </button>
                           );
                         })}
@@ -1011,17 +1033,20 @@ const StudentResourceView = () => {
                                 <Armchair className="h-5 w-5 text-emerald-600" />
                                 Seat {seat?.number}
                               </h5>
+                              <p className="text-xs text-slate-500">{formatSeatType(seat?.type)} • {getSeatFeatureLabel(seat || {})}</p>
                               <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
                                 <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">Available</span>
                                 <span className="rounded bg-primary px-2 py-1 text-white">Selected</span>
                                 <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">Pending</span>
                                 <span className="rounded bg-red-100 px-2 py-1 text-red-700">Booked</span>
+                                <span className="rounded bg-slate-100 px-2 py-1 text-slate-400">Past</span>
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap gap-2">
                               {getBookingSlots(bookingResource, bookingDate).map(slot => {
                                 const slotStatus = getSlotBookingStatus(seatId, slot);
-                                const blocked = Boolean(slotStatus);
+                                const past = isPastSlot(bookingDate, slot);
+                                const blocked = Boolean(slotStatus) || past;
                                 const selected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
                                 return (
                                   <button
@@ -1029,7 +1054,8 @@ const StudentResourceView = () => {
                                     type="button"
                                     disabled={blocked}
                                     onClick={() => setSelectedSlot(slot)}
-                                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-100 ${getSlotStateClasses(slotStatus, selected)}`}
+                                    title={past ? 'This time slot has already passed' : undefined}
+                                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-100 ${getSlotStateClasses(slotStatus, selected, past)}`}
                                   >
                                     {slot.startTime} - {slot.endTime}
                                   </button>
