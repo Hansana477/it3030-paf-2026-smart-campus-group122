@@ -138,6 +138,8 @@ function formatNotificationType(type) {
       return "Approval";
     case "TECHNICIAN_PENDING":
       return "Admin Review";
+    case "GENERAL":
+      return "Welcome";
     default:
       return "Update";
   }

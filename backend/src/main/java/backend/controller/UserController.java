@@ -140,6 +140,10 @@ public class UserController {
             );
         }
 
+        if (user.getLastLogin() == null) {
+            notificationService.notifyWelcome(user);
+        }
+
         userRepository.updateLastLogin(user.getId());
 
         UserModel loggedInUser = userRepository.findById(user.getId())
@@ -174,6 +178,10 @@ public class UserController {
         }
 
         String userId = user.getId();
+        if (user.getLastLogin() == null) {
+            notificationService.notifyWelcome(user);
+        }
+
         userRepository.updateLastLogin(userId);
 
         UserModel loggedInUser = userRepository.findById(userId)
@@ -207,6 +215,10 @@ public class UserController {
 
         clearLoginOtpState(user);
         userRepository.save(user);
+        if (user.getLastLogin() == null) {
+            notificationService.notifyWelcome(user);
+        }
+
         userRepository.updateLastLogin(user.getId());
 
         UserModel loggedInUser = userRepository.findById(user.getId())

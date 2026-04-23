@@ -37,6 +37,25 @@ public class NotificationService {
         return savedNotification;
     }
 
+    public NotificationModel createSilentNotification(UserModel recipient, String title, String message, String type) {
+        NotificationModel notification = new NotificationModel();
+        notification.setRecipient(recipient);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setType(type);
+        notification.setRead(false);
+        return notificationRepository.save(notification);
+    }
+
+    public void notifyWelcome(UserModel user) {
+        createSilentNotification(
+                user,
+                "Welcome to Smart Campus!",
+                "Hi " + user.getFullName() + ", welcome to Smart Campus. We are glad to have you here!",
+                "GENERAL"
+        );
+    }
+
     public List<NotificationModel> getNotificationsForUser(String userId) {
         return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId);
     }
