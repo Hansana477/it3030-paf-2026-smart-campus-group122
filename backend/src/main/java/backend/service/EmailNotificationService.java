@@ -115,7 +115,25 @@ public class EmailNotificationService {
         sendEmail(user.getEmail(), "Smart Campus notification: " + title, body);
     }
 
-    private void sendEmail(String to, String subject, String body) {
+    public boolean sendLoginOtpEmail(UserModel user, String otpCode) {
+        if (user == null || !StringUtils.hasText(user.getEmail()) || !StringUtils.hasText(otpCode)) {
+            return false;
+        }
+
+        String body = String.format(
+                "Hello %s,%n%n"
+                        + "We received a login request for your Smart Campus account.%n"
+                        + "Your login verification code is: %s%n"
+                        + "This code will expire in 10 minutes.%n%n"
+                        + "Smart Campus Team",
+                safeName(user),
+                otpCode
+        );
+
+        return sendEmail(user.getEmail(), "Smart Campus login verification code", body);
+    }
+
+    private boolean sendEmail(String to, String subject, String body) {
         if (!StringUtils.hasText(mailHost)) {
             logger.info("Skipping email to {} because SMTP host is not configured.", to);
             return false;

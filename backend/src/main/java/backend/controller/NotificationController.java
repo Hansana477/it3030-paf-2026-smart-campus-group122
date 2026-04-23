@@ -40,7 +40,7 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
-    public NotificationModel markAsRead(@PathVariable Long id, Authentication authentication) {
+    public NotificationModel markAsRead(@PathVariable String id, Authentication authentication) {
         UserModel user = getAuthenticatedUser(authentication);
         NotificationModel notification = notificationRepository.findByIdAndRecipientId(id, user.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));

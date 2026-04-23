@@ -1,25 +1,18 @@
 package backend.repository;
 
 import backend.model.NotificationModel;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface NotificationRepository extends JpaRepository<NotificationModel, Long> {
+public interface NotificationRepository extends MongoRepository<NotificationModel, String> {
 
-    List<NotificationModel> findByRecipientIdOrderByCreatedAtDesc(Long recipientId);
+    List<NotificationModel> findByRecipientIdOrderByCreatedAtDesc(String recipientId);
 
-    Optional<NotificationModel> findByIdAndRecipientId(Long id, Long recipientId);
+    Optional<NotificationModel> findByIdAndRecipientId(String id, String recipientId);
 
-    @Modifying
-    @Transactional
-    @Query("UPDATE NotificationModel n SET n.read = true WHERE n.recipient.id = :recipientId AND n.read = false")
-    int markAllAsRead(@Param("recipientId") Long recipientId);
+    List<NotificationModel> findByRecipientIdAndReadFalse(String recipientId);
 }

@@ -37,7 +37,7 @@ public class NotificationService {
         return savedNotification;
     }
 
-    public List<NotificationModel> getNotificationsForUser(Long userId) {
+    public List<NotificationModel> getNotificationsForUser(String userId) {
         return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId);
     }
 
@@ -46,8 +46,10 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
-    public void markAllAsRead(Long userId) {
-        notificationRepository.markAllAsRead(userId);
+    public void markAllAsRead(String userId) {
+        List<NotificationModel> unread = notificationRepository.findByRecipientIdAndReadFalse(userId);
+        unread.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(unread);
     }
 
     public void notifyAdminsOfPendingTechnician(UserModel technician) {

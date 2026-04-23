@@ -219,7 +219,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setNotificationError("");
 
     try {
-      const response = await fetch("http://localhost:8080/notifications", {
+      const response = await fetch("http://localhost:8082/notifications", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -273,7 +273,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/notifications/${notificationId}/read`, {
+      const response = await fetch(`http://localhost:8082/notifications/${notificationId}/read`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -308,7 +308,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     }
 
     try {
-      const response = await fetch("http://localhost:8080/notifications/read-all", {
+      const response = await fetch("http://localhost:8082/notifications/read-all", {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
