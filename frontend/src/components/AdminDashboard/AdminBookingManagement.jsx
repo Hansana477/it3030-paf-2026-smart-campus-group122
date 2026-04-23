@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Calendar, CheckCircle, Clock, Loader2, Mail, RefreshCw, Search, XCircle } from 'lucide-react';
+import { AlertCircle, BarChart3, Calendar, CheckCircle, Clock, Loader2, Mail, PieChart, RefreshCw, Search, TrendingUp, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = 'http://localhost:8082';
@@ -129,6 +129,47 @@ const AdminBookingManagement = () => {
     }
   };
 
+  const resourceStats = Object.values(bookings.reduce((stats, booking) => {
+    const key = booking.resourceId || booking.resourceName || 'Unknown resource';
+    const current = stats[key] || {
+      id: key,
+      name: booking.resourceName || 'Unknown resource',
+      location: booking.location || '',
+      total: 0,
+      approved: 0,
+      pending: 0,
+      rejected: 0,
+      cancelled: 0,
+    };
+    current.total += 1;
+    if (booking.status === 'APPROVED') current.approved += 1;
+    if (booking.status === 'PENDING') current.pending += 1;
+    if (booking.status === 'REJECTED') current.rejected += 1;
+    if (booking.status === 'CANCELLED') current.cancelled += 1;
+    stats[key] = current;
+    return stats;
+  }, {})).sort((a, b) => b.total - a.total);
+
+  const maxResourceBookings = Math.max(...resourceStats.map(resource => resource.total), 1);
+  const topResource = resourceStats[0];
+  const statusStats = STATUS_OPTIONS
+    .filter(status => status !== 'ALL')
+    .map(status => ({
+      status,
+      count: bookings.filter(booking => booking.status === status).length,
+    }));
+  const totalBookings = bookings.length;
+  const approvedCount = statusStats.find(item => item.status === 'APPROVED')?.count || 0;
+  const approvalRate = totalBookings ? Math.round((approvedCount / totalBookings) * 100) : 0;
+  const statusColorClass = (status) => {
+    switch (status) {
+      case 'APPROVED': return 'bg-emerald-500';
+      case 'REJECTED': return 'bg-red-500';
+      case 'CANCELLED': return 'bg-slate-400';
+      default: return 'bg-amber-500';
+    }
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8">
       <section className="mx-auto max-w-7xl">
@@ -161,6 +202,103 @@ const AdminBookingManagement = () => {
 
         {message && <p className="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{message}</p>}
         {loading && <p className="mt-8 flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading bookings...</p>}
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Report & Analysis</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">Booking Performance</h2>
+              <p className="mt-1 text-sm text-slate-500">Most booked resources and booking status summary.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-500">Total</p>
+                <p className="text-2xl font-bold text-slate-900">{totalBookings}</p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 px-4 py-3">
+                <p className="text-xs font-semibold text-emerald-700">Approved</p>
+                <p className="text-2xl font-bold text-emerald-700">{approvedCount}</p>
+              </div>
+              <div className="rounded-xl bg-blue-50 px-4 py-3">
+                <p className="text-xs font-semibold text-blue-700">Approval</p>
+                <p className="text-2xl font-bold text-blue-700">{approvalRate}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="inline-flex items-center gap-2 font-bold text-slate-900">
+                  <BarChart3 className="h-5 w-5 text-emerald-600" />
+                  Most Booked Resources
+                </h3>
+                {topResource && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    Top: {topResource.name}
+                  </span>
+                )}
+              </div>
+
+              {resourceStats.length === 0 ? (
+                <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">No booking data yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {resourceStats.slice(0, 6).map(resource => (
+                    <div key={resource.id}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-800">{resource.name}</p>
+                          <p className="truncate text-xs text-slate-400">{resource.location}</p>
+                        </div>
+                        <span className="shrink-0 font-bold text-slate-700">{resource.total}</span>
+                      </div>
+                      <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${Math.max((resource.total / maxResourceBookings) * 100, 5)}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                        <span>Approved {resource.approved}</span>
+                        <span>Pending {resource.pending}</span>
+                        <span>Rejected {resource.rejected}</span>
+                        <span>Cancelled {resource.cancelled}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <h3 className="mb-4 inline-flex items-center gap-2 font-bold text-slate-900">
+                <PieChart className="h-5 w-5 text-blue-600" />
+                Status Breakdown
+              </h3>
+              <div className="space-y-3">
+                {statusStats.map(item => {
+                  const percentage = totalBookings ? Math.round((item.count / totalBookings) * 100) : 0;
+                  return (
+                    <div key={item.status}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="inline-flex items-center gap-2 font-semibold text-slate-700">
+                          <span className={`h-2.5 w-2.5 rounded-full ${statusColorClass(item.status)}`} />
+                          {item.status}
+                        </span>
+                        <span className="font-bold text-slate-700">{item.count} ({percentage}%)</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div className={`h-full rounded-full ${statusColorClass(item.status)}`} style={{ width: `${percentage}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="min-w-full divide-y divide-slate-200">
