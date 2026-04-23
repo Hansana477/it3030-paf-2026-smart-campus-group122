@@ -70,6 +70,8 @@ const StudentResourceView = () => {
   const [bookingPurpose, setBookingPurpose] = useState('');
   const [resourceBookings, setResourceBookings] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [selectedResourceReviews, setSelectedResourceReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -158,10 +160,24 @@ const StudentResourceView = () => {
     setTimeout(() => setShowNotification(false), 3000);
   };
 
-  const handleViewDetails = (resource) => {
+  const handleViewDetails = async (resource) => {
     setSelectedResource(resource);
     setSelectedImageIndex(0);
     setShowDetailsModal(true);
+    setSelectedResourceReviews([]);
+    setReviewsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/reviews/resource/${resource.id}`);
+      const data = await response.json().catch(() => []);
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Failed to load reviews');
+      }
+      setSelectedResourceReviews(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to load reviews', 'error');
+    } finally {
+      setReviewsLoading(false);
+    }
   };
 
   const showPreviousImage = () => {
@@ -382,6 +398,14 @@ const StudentResourceView = () => {
     if (seat.hasUsb) features.push('USB port');
     if (seat.isAccessible || seat.accessible) features.push('Accessible');
     return features.length ? features.join(' • ') : 'No extras';
+  };
+  const renderStars = (rating, sizeClass = 'h-4 w-4') => {
+    return [1, 2, 3, 4, 5].map(value => (
+      <Star
+        key={value}
+        className={`${sizeClass} ${value <= Math.round(Number(rating) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`}
+      />
+    ));
   };
   const toggleSeatSelection = (seat) => {
     if (seat.status && seat.status !== 'AVAILABLE') {
@@ -902,6 +926,45 @@ const StudentResourceView = () => {
                   </div>
                 </div>
               )}
+
+              <div className="mb-6">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <h4 className="font-semibold text-slate-800">Student Reviews</h4>
+                  <div className="flex items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5 text-sm font-semibold text-slate-700">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    {Number(selectedResource.rating || 0).toFixed(1)} / 5
+                    <span className="text-slate-400">({selectedResource.reviews || 0})</span>
+                  </div>
+                </div>
+
+                {reviewsLoading ? (
+                  <p className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading reviews...
+                  </p>
+                ) : selectedResourceReviews.length === 0 ? (
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    No reviews yet for this resource.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedResourceReviews.map(review => (
+                      <div key={review.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-slate-800">{review.studentName || 'Student'}</p>
+                            <div className="mt-1 flex items-center gap-1">{renderStars(review.rating)}</div>
+                          </div>
+                          <span className="text-xs text-slate-400">
+                            {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
+                          </span>
+                        </div>
+                        {review.comment && <p className="mt-3 text-sm leading-6 text-slate-600">{review.comment}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="border-t border-slate-200 px-6 py-4 flex gap-3 justify-end bg-slate-50">

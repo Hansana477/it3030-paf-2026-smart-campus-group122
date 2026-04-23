@@ -1,6 +1,7 @@
 package backend.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -39,6 +40,15 @@ public class BookingModel {
     private String approvalEmailStatus;
     private LocalDateTime requestedAt;
     private LocalDateTime updatedAt;
+
+    @Transient
+    private Boolean reviewed;
+    @Transient
+    private String reviewId;
+    @Transient
+    private Integer reviewRating;
+    @Transient
+    private String reviewComment;
 
     public void applyDefaults() {
         if (seatIds == null) {
@@ -136,4 +146,16 @@ public class BookingModel {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Boolean getReviewed() { return reviewed; }
+    public void setReviewed(Boolean reviewed) { this.reviewed = reviewed; }
+
+    public String getReviewId() { return reviewId; }
+    public void setReviewId(String reviewId) { this.reviewId = reviewId; }
+
+    public Integer getReviewRating() { return reviewRating; }
+    public void setReviewRating(Integer reviewRating) { this.reviewRating = reviewRating; }
+
+    public String getReviewComment() { return reviewComment; }
+    public void setReviewComment(String reviewComment) { this.reviewComment = reviewComment; }
 }

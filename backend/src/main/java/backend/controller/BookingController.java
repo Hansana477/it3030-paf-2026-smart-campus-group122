@@ -6,6 +6,7 @@ import backend.model.ResourceModel;
 import backend.model.UserModel;
 import backend.repository.BookingRepository;
 import backend.repository.ResourceRepository;
+import backend.repository.ReviewRepository;
 import backend.service.EmailNotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -42,15 +43,18 @@ public class BookingController {
 
     private final BookingRepository bookingRepository;
     private final ResourceRepository resourceRepository;
+    private final ReviewRepository reviewRepository;
     private final EmailNotificationService emailNotificationService;
 
     public BookingController(
             BookingRepository bookingRepository,
             ResourceRepository resourceRepository,
+            ReviewRepository reviewRepository,
             EmailNotificationService emailNotificationService
     ) {
         this.bookingRepository = bookingRepository;
         this.resourceRepository = resourceRepository;
+        this.reviewRepository = reviewRepository;
         this.emailNotificationService = emailNotificationService;
     }
 
@@ -75,7 +79,9 @@ public class BookingController {
 
     @GetMapping("/my")
     public List<BookingModel> getMyBookings(Authentication authentication) {
-        return bookingRepository.findByRequesterId(currentUser(authentication).getId());
+        return bookingRepository.findByRequesterId(currentUser(authentication).getId()).stream()
+                .map(this::attachReviewSummary)
+                .toList();
     }
 
     @GetMapping("/resource/{resourceId}")
@@ -339,6 +345,16 @@ public class BookingController {
     private BookingModel getBooking(String id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Could not find booking with id " + id));
+    }
+
+    private BookingModel attachReviewSummary(BookingModel booking) {
+        reviewRepository.findByBookingId(booking.getId()).ifPresentOrElse(review -> {
+            booking.setReviewed(true);
+            booking.setReviewId(review.getId());
+            booking.setReviewRating(review.getRating());
+            booking.setReviewComment(review.getComment());
+        }, () -> booking.setReviewed(false));
+        return booking;
     }
 
     private UserModel currentUser(Authentication authentication) {

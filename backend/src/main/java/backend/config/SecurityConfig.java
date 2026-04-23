@@ -46,6 +46,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/resources", "/resources/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/reviews/resource/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/resources/images").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/resources").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/resources/*").hasRole("ADMIN")

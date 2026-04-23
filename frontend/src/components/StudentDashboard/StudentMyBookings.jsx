@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Clock, Download, MapPin, QrCode, RefreshCw, XCircle, Loader2 } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Clock, Download, MapPin, MessageSquare, QrCode, RefreshCw, Star, XCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = 'http://localhost:8082';
@@ -13,6 +13,9 @@ const StudentMyBookings = () => {
   const [rescheduleBooking, setRescheduleBooking] = useState(null);
   const [rescheduleForm, setRescheduleForm] = useState({ date: '', startTime: '', endTime: '' });
   const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const [reviewBooking, setReviewBooking] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -92,6 +95,50 @@ const StudentMyBookings = () => {
       setRescheduleBooking(null);
     } catch (error) {
       setMessage(error.message || 'Failed to reschedule booking');
+    }
+  };
+
+  const openReview = (booking) => {
+    setReviewBooking(booking);
+    setReviewForm({ rating: 5, comment: '' });
+  };
+
+  const submitReview = async () => {
+    if (!reviewBooking) return;
+    setReviewSubmitting(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          bookingId: reviewBooking.id,
+          rating: Number(reviewForm.rating),
+          comment: reviewForm.comment.trim(),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Failed to submit review');
+      }
+      setBookings(current => current.map(item => item.id === reviewBooking.id
+        ? {
+            ...item,
+            reviewed: true,
+            reviewId: data.id,
+            reviewRating: data.rating,
+            reviewComment: data.comment,
+          }
+        : item
+      ));
+      setReviewBooking(null);
+    } catch (error) {
+      setMessage(error.message || 'Failed to submit review');
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -327,6 +374,16 @@ const StudentMyBookings = () => {
                       <Download className="h-4 w-4" /> Download QR
                     </button>
                   )}
+                  {booking.status === 'APPROVED' && !booking.reviewed && (
+                    <button onClick={() => openReview(booking)} className="inline-flex items-center gap-2 rounded-xl bg-yellow-50 px-4 py-2 font-semibold text-yellow-700 hover:bg-yellow-100">
+                      <Star className="h-4 w-4" /> Add Review
+                    </button>
+                  )}
+                  {booking.status === 'APPROVED' && booking.reviewed && (
+                    <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 font-semibold text-slate-600">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /> Reviewed {booking.reviewRating}/5
+                    </span>
+                  )}
                   {['PENDING', 'APPROVED'].includes(booking.status) && (
                     <>
                       <button onClick={() => openReschedule(booking)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 font-semibold text-emerald-700 hover:bg-emerald-100">
@@ -362,6 +419,62 @@ const StudentMyBookings = () => {
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setRescheduleBooking(null)} className="rounded-xl px-4 py-2 text-slate-600 hover:bg-slate-100">Close</button>
               <button onClick={submitReschedule} className="rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-white hover:bg-emerald-600">Submit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-yellow-50 p-3 text-yellow-600">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">Review Resource</h2>
+                <p className="mt-1 text-sm text-slate-500">{reviewBooking.resourceName} on {reviewBooking.date}</p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-sm font-semibold text-slate-700">Rating</p>
+              <div className="mt-2 flex gap-2">
+                {[1, 2, 3, 4, 5].map(value => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setReviewForm(current => ({ ...current, rating: value }))}
+                    className="rounded-lg p-1 transition hover:bg-yellow-50"
+                    aria-label={`Rate ${value} stars`}
+                  >
+                    <Star className={`h-8 w-8 ${value <= reviewForm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="mt-5 block">
+              <span className="text-sm font-semibold text-slate-700">Feedback</span>
+              <textarea
+                value={reviewForm.comment}
+                onChange={(event) => setReviewForm(current => ({ ...current, comment: event.target.value }))}
+                rows={4}
+                placeholder="Share your experience with this resource..."
+                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+              />
+            </label>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setReviewBooking(null)} className="rounded-xl px-4 py-2 text-slate-600 hover:bg-slate-100">Close</button>
+              <button
+                onClick={submitReview}
+                disabled={reviewSubmitting}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+              >
+                {reviewSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Submit Review
+              </button>
             </div>
           </div>
         </div>
