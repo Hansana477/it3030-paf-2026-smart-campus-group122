@@ -63,6 +63,13 @@ const StudentResourceView = () => {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationType, setNotificationType] = useState('success');
+  const [bookingResource, setBookingResource] = useState(null);
+  const [bookingDate, setBookingDate] = useState('');
+  const [selectedSeatIds, setSelectedSeatIds] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [bookingPurpose, setBookingPurpose] = useState('');
+  const [resourceBookings, setResourceBookings] = useState([]);
+  const [bookingLoading, setBookingLoading] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -213,8 +220,6 @@ const StudentResourceView = () => {
     return Math.round((occupied / total) * 100);
   };
 
-  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const today = new Date().getDay();
   const getDateKey = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -230,6 +235,24 @@ const StudentResourceView = () => {
       year: 'numeric',
     });
   };
+
+  const openBookingModal = (resource) => {
+    setBookingResource(resource);
+    setBookingDate(getNextAvailableDate(resource) || todayDate);
+    setSelectedSeatIds([]);
+    setSelectedSlot(null);
+    setBookingPurpose('');
+    setResourceBookings([]);
+  };
+
+  const closeBookingModal = () => {
+    setBookingResource(null);
+    setBookingDate('');
+    setSelectedSeatIds([]);
+    setSelectedSlot(null);
+    setBookingPurpose('');
+    setResourceBookings([]);
+  };
   const getAvailabilityDateRange = (window) => {
     const startDate = window.startDate || window.date;
     const endDate = window.endDate || window.date;
@@ -242,9 +265,8 @@ const StudentResourceView = () => {
   const isTodayInAvailabilityWindow = (window) => {
     const startDate = window.startDate || window.date;
     const endDate = window.endDate || window.date;
-    const matchesDay = window.dayOfWeek === today;
     const matchesDate = (!startDate || todayDate >= startDate) && (!endDate || todayDate <= endDate);
-    return matchesDay && matchesDate;
+    return matchesDate;
   };
   const getTodayHours = (availabilityWindows) => {
     const todayWindow = availabilityWindows?.find(isTodayInAvailabilityWindow);
@@ -252,6 +274,173 @@ const StudentResourceView = () => {
       return `${todayWindow.startTime} - ${todayWindow.endTime}`;
     }
     return 'Closed';
+  };
+  const addMinutesToTime = (time, minutes) => {
+    const [hours, mins] = time.split(':').map(Number);
+    const date = new Date(2000, 0, 1, hours, mins + minutes);
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  };
+  const toMinutes = (time) => {
+    const [hours, mins] = time.split(':').map(Number);
+    return hours * 60 + mins;
+  };
+  const getAvailabilityForDate = (resource, date) => {
+    if (!resource || !date) return null;
+    return resource.availabilityWindows?.find(window => {
+      const startDate = window.startDate || window.date;
+      const endDate = window.endDate || window.date;
+      const matchesDate = (!startDate || date >= startDate) && (!endDate || date <= endDate);
+      return matchesDate;
+    }) || null;
+  };
+  const getNextAvailableDate = (resource) => {
+    if (!resource?.availabilityWindows?.length) return '';
+    const start = new Date(`${todayDate}T00:00:00`);
+    for (let offset = 0; offset < 60; offset++) {
+      const candidate = new Date(start);
+      candidate.setDate(start.getDate() + offset);
+      const dateKey = getDateKey(candidate);
+      if (getAvailabilityForDate(resource, dateKey)) {
+        return dateKey;
+      }
+    }
+    return '';
+  };
+  const getBookingSlots = (resource, date) => {
+    const window = getAvailabilityForDate(resource, date);
+    if (!window) return [];
+    const slots = [];
+    let current = window.startTime;
+    while (toMinutes(current) < toMinutes(window.endTime)) {
+      const next = toMinutes(addMinutesToTime(current, 120)) < toMinutes(window.endTime)
+        ? addMinutesToTime(current, 120)
+        : window.endTime;
+      slots.push({ startTime: current, endTime: next });
+      current = next;
+    }
+    return slots;
+  };
+  const isSlotBookedForSeat = (seatId, slot) => {
+    return resourceBookings.some(booking => {
+      if (!['PENDING', 'APPROVED'].includes(booking.status)) return false;
+      if (!booking.seatIds?.includes(seatId)) return false;
+      return toMinutes(slot.startTime) < toMinutes(booking.endTime) && toMinutes(slot.endTime) > toMinutes(booking.startTime);
+    });
+  };
+  const getSeatBookingStatus = (seatId) => {
+    const matchingBookings = resourceBookings.filter(booking =>
+      ['PENDING', 'APPROVED'].includes(booking.status) && booking.seatIds?.includes(seatId)
+    );
+    if (matchingBookings.some(booking => booking.status === 'APPROVED')) return 'APPROVED';
+    if (matchingBookings.some(booking => booking.status === 'PENDING')) return 'PENDING';
+    return null;
+  };
+  const getSeatStateClasses = (seat, isSelected) => {
+    if (seat.status && seat.status !== 'AVAILABLE') {
+      return 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed';
+    }
+    const bookingStatus = getSeatBookingStatus(seat.id);
+    if (bookingStatus === 'APPROVED') {
+      return 'border-red-300 bg-red-100 text-red-700 cursor-not-allowed';
+    }
+    if (bookingStatus === 'PENDING') {
+      return 'border-amber-300 bg-amber-100 text-amber-700 cursor-not-allowed';
+    }
+    if (isSelected) {
+      return 'border-emerald-500 bg-emerald-500 text-white shadow-sm';
+    }
+    return 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50';
+  };
+  const toggleSeatSelection = (seat) => {
+    if (seat.status && seat.status !== 'AVAILABLE') {
+      showNotificationMessage('This seat is not available', 'error');
+      return;
+    }
+    const bookingStatus = getSeatBookingStatus(seat.id);
+    if (bookingStatus) {
+      showNotificationMessage(`Seat ${seat.number} is ${bookingStatus === 'PENDING' ? 'pending approval' : 'already booked'}`, 'error');
+      return;
+    }
+    setSelectedSlot(null);
+    setSelectedSeatIds(current => {
+      if (current.includes(seat.id)) {
+        return current.filter(id => id !== seat.id);
+      }
+      if (current.length >= 4) {
+        showNotificationMessage('You can select maximum 4 seats for one booking', 'error');
+        return current;
+      }
+      return [...current, seat.id];
+    });
+  };
+
+  useEffect(() => {
+    const loadBookings = async () => {
+      if (!bookingResource || !bookingDate) return;
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE_URL}/bookings/resource/${bookingResource.id}?date=${bookingDate}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(data?.message || data?.error || 'Failed to load bookings');
+        }
+        setResourceBookings(Array.isArray(data) ? data : []);
+      } catch (error) {
+        showNotificationMessage(error.message || 'Failed to load bookings', 'error');
+      }
+    };
+
+    loadBookings();
+  }, [bookingResource, bookingDate]);
+
+  const submitBookingRequest = async () => {
+    if (!bookingResource || !bookingDate || !selectedSlot || !bookingPurpose.trim()) {
+      showNotificationMessage('Select date, seats, time slot, and purpose', 'error');
+      return;
+    }
+    if (selectedSeatIds.length < 1 || selectedSeatIds.length > 4) {
+      showNotificationMessage('Select 1 to 4 seats', 'error');
+      return;
+    }
+    if (selectedSeatIds.some(seatId => isSlotBookedForSeat(seatId, selectedSlot))) {
+      showNotificationMessage('Selected slot is no longer available for one or more seats', 'error');
+      return;
+    }
+
+    const selectedSeats = bookingResource.seatingLayout?.seats.filter(seat => selectedSeatIds.includes(seat.id)) || [];
+    const token = localStorage.getItem('token');
+    setBookingLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          resourceId: bookingResource.id,
+          date: bookingDate,
+          startTime: selectedSlot.startTime,
+          endTime: selectedSlot.endTime,
+          purpose: bookingPurpose.trim(),
+          expectedAttendees: selectedSeats.length,
+          seatIds: selectedSeats.map(seat => seat.id),
+          seatNumbers: selectedSeats.map(seat => seat.number),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Failed to create booking request');
+      }
+      showNotificationMessage('Booking request created. Status: PENDING', 'success');
+      closeBookingModal();
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to create booking request', 'error');
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   return (
@@ -409,6 +598,7 @@ const StudentResourceView = () => {
                 getAvailableSeatsCount={getAvailableSeatsCount}
                 getOccupancyRate={getOccupancyRate}
                 getTodayHours={getTodayHours}
+                onBook={() => openBookingModal(resource)}
               />
             ))}
           </div>
@@ -425,6 +615,7 @@ const StudentResourceView = () => {
                 getResourceTypeColor={getResourceTypeColor}
                 getAvailableSeatsCount={getAvailableSeatsCount}
                 getTodayHours={getTodayHours}
+                onBook={() => openBookingModal(resource)}
               />
             ))}
           </div>
@@ -630,13 +821,12 @@ const StudentResourceView = () => {
               <div className="mb-6">
                 <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  Weekly Schedule
+                  Availability Schedule
                 </h4>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {selectedResource.availabilityWindows?.map((window, idx) => (
                       <div key={idx} className="flex flex-col gap-1 p-2 bg-white rounded-lg border border-slate-200">
-                        <span className="text-sm font-medium text-slate-700">{daysOfWeek[window.dayOfWeek]}</span>
                         {getAvailabilityDateRange(window) && (
                           <span className="text-xs text-slate-400">{getAvailabilityDateRange(window)}</span>
                         )}
@@ -695,10 +885,174 @@ const StudentResourceView = () => {
                 Close
               </button>
               <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  openBookingModal(selectedResource);
+                }}
                 className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
               >
                 <Calendar className="w-4 h-4" />
                 Book Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bookingResource && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900">Make Booking</h3>
+                <p className="text-sm text-slate-500">{bookingResource.name} • {bookingResource.location}</p>
+              </div>
+              <button onClick={closeBookingModal} className="p-2 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Select Date</label>
+                  <input
+                    type="date"
+                    min={todayDate}
+                    value={bookingDate}
+                    onChange={(event) => {
+                      setBookingDate(event.target.value);
+                      setSelectedSeatIds([]);
+                      setSelectedSlot(null);
+                    }}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Purpose</label>
+                  <input
+                    type="text"
+                    value={bookingPurpose}
+                    onChange={(event) => setBookingPurpose(event.target.value)}
+                    placeholder="Study session, project discussion..."
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {bookingDate && !getAvailabilityForDate(bookingResource, bookingDate) && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  This resource has no availability window for the selected date. Choose a date inside the configured availability range.
+                </p>
+              )}
+
+              {bookingDate && getAvailabilityForDate(bookingResource, bookingDate) && bookingResource.seatingLayout && (
+                <>
+                  <div>
+                    <div className="flex items-center justify-between gap-4 mb-3">
+                      <h4 className="font-semibold text-slate-800">Select 1 to 4 Seats</h4>
+                      <span className="text-sm text-slate-500">{selectedSeatIds.length}/4 selected</span>
+                    </div>
+                    <div className="mb-3 flex flex-wrap gap-3 text-xs text-slate-600">
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-500" /> Available</span>
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-emerald-600" /> Selected</span>
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-amber-600" /> Pending</span>
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-red-600" /> Booked</span>
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-400" /> Unavailable</span>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div
+                        className="grid gap-2 min-w-max"
+                        style={{ gridTemplateColumns: `repeat(${bookingResource.seatingLayout.cols}, 64px)` }}
+                      >
+                        {bookingResource.seatingLayout.seats.map(seat => {
+                          const isSelected = selectedSeatIds.includes(seat.id);
+                          const bookingStatus = getSeatBookingStatus(seat.id);
+                          const disabled = Boolean(bookingStatus) || (seat.status && seat.status !== 'AVAILABLE');
+                          return (
+                            <button
+                              key={seat.id}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => toggleSeatSelection(seat)}
+                              title={
+                                bookingStatus === 'PENDING'
+                                  ? `Seat ${seat.number} has a pending booking`
+                                  : bookingStatus === 'APPROVED'
+                                    ? `Seat ${seat.number} is booked`
+                                    : seat.status && seat.status !== 'AVAILABLE'
+                                      ? `Seat ${seat.number} is ${seat.status.toLowerCase()}`
+                                      : `Seat ${seat.number} is available`
+                              }
+                              className={`flex h-14 flex-col items-center justify-center rounded-lg border text-xs font-semibold transition disabled:opacity-100 ${getSeatStateClasses(seat, isSelected)}`}
+                            >
+                              <Armchair className="h-5 w-5" />
+                              <span>{seat.number}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedSeatIds.length > 0 && (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {selectedSeatIds.map(seatId => {
+                        const seat = bookingResource.seatingLayout.seats.find(item => item.id === seatId);
+                        return (
+                          <div key={seatId} className="rounded-xl border border-slate-200 bg-white p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <h5 className="inline-flex items-center gap-2 font-semibold text-slate-800">
+                                <Armchair className="h-5 w-5 text-emerald-600" />
+                                Seat {seat?.number}
+                              </h5>
+                              <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">Available</span>
+                                <span className="rounded bg-primary px-2 py-1 text-white">Selected</span>
+                                <span className="rounded bg-slate-100 px-2 py-1 text-slate-400">Unavailable</span>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {getBookingSlots(bookingResource, bookingDate).map(slot => {
+                                const blocked = isSlotBookedForSeat(seatId, slot);
+                                const selected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
+                                return (
+                                  <button
+                                    key={`${seatId}-${slot.startTime}`}
+                                    type="button"
+                                    disabled={blocked}
+                                    onClick={() => setSelectedSlot(slot)}
+                                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:border disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 ${
+                                      selected
+                                        ? 'bg-primary text-white'
+                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                    }`}
+                                  >
+                                    {slot.startTime} - {slot.endTime}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3">
+              <button onClick={closeBookingModal} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+                Cancel
+              </button>
+              <button
+                onClick={submitBookingRequest}
+                disabled={bookingLoading}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2 font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+              >
+                {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Request Booking
               </button>
             </div>
           </div>
@@ -711,7 +1065,7 @@ const StudentResourceView = () => {
 // Resource Card Component (Grid View)
 const ResourceCard = ({ 
   resource, isFavorite, onViewDetails, onToggleFavorite,
-  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getOccupancyRate, getTodayHours 
+  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getOccupancyRate, getTodayHours, onBook
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 group">
@@ -782,7 +1136,7 @@ const ResourceCard = ({
             <Eye className="w-4 h-4" />
             View Details
           </button>
-          <button className="px-3 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-1">
+          <button onClick={onBook} className="px-3 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-1">
             <Calendar className="w-4 h-4" />
             Book
           </button>
@@ -795,7 +1149,7 @@ const ResourceCard = ({
 // Resource List Item Component (List View)
 const ResourceListItem = ({ 
   resource, isFavorite, onViewDetails, onToggleFavorite,
-  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getTodayHours 
+  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getTodayHours, onBook
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-all duration-200">
@@ -865,7 +1219,7 @@ const ResourceListItem = ({
               <Eye className="w-4 h-4" />
               View Details
             </button>
-            <button className="px-3 py-1.5 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center gap-1">
+            <button onClick={onBook} className="px-3 py-1.5 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center gap-1">
               <Calendar className="w-4 h-4" />
               Book Now
             </button>

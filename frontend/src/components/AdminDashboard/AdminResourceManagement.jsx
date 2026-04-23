@@ -240,7 +240,7 @@ const AdminResourceManagement = () => {
     images: [],
     amenities: [],
     availabilityWindows: [
-      { dayOfWeek: 1, startDate: '', endDate: '', startTime: '09:00', endTime: '17:00' }
+      { startDate: '', endDate: '', startTime: '09:00', endTime: '17:00' }
     ],
   });
   
@@ -431,7 +431,7 @@ const AdminResourceManagement = () => {
       description: '',
       images: [],
       amenities: [],
-      availabilityWindows: [{ dayOfWeek: 1, startDate: '', endDate: '', startTime: '09:00', endTime: '17:00' }],
+      availabilityWindows: [{ startDate: '', endDate: '', startTime: '09:00', endTime: '17:00' }],
     });
     setIsEditing(false);
     setFormErrors({});
@@ -750,16 +750,27 @@ const AdminResourceManagement = () => {
   const addAvailabilityWindow = () => {
     setResourceForm(prev => ({
       ...prev,
-      availabilityWindows: [...(prev.availabilityWindows || []), { dayOfWeek: 1, startDate: '', endDate: '', startTime: '09:00', endTime: '17:00' }]
+      availabilityWindows: [...(prev.availabilityWindows || []), { startDate: '', endDate: '', startTime: '09:00', endTime: '17:00' }]
     }));
   };
 
   const updateAvailabilityWindow = (index, field, value) => {
     const newWindows = [...(resourceForm.availabilityWindows || [])];
-    newWindows[index] = {
-      ...newWindows[index],
+    const currentWindow = newWindows[index] || {};
+    const nextWindow = {
+      ...currentWindow,
       [field]: value,
       ...(field === 'startDate' || field === 'endDate' ? { date: '' } : {}),
+    };
+
+    if (field === 'startDate' && value) {
+      if (nextWindow.endDate && nextWindow.endDate < value) {
+        nextWindow.endDate = value;
+      }
+    }
+
+    newWindows[index] = {
+      ...nextWindow,
     };
     setResourceForm(prev => ({ ...prev, availabilityWindows: newWindows }));
   };
@@ -801,8 +812,6 @@ const AdminResourceManagement = () => {
       default: return <Building className="w-5 h-5" />;
     }
   };
-
-  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // Count statistics
   const stats = {
@@ -1341,19 +1350,7 @@ const AdminResourceManagement = () => {
               {activeTab === 'availability' && (
                 <div className="space-y-4">
                   {resourceForm.availabilityWindows?.map((window, idx) => (
-                    <div key={idx} className="grid grid-cols-1 gap-3 p-3 bg-slate-50 rounded-lg md:grid-cols-[1fr_1fr_1fr_120px_auto_120px_auto] md:items-end">
-                      <div>
-                        <label className="text-xs font-medium text-slate-500 mb-1 block">Day</label>
-                        <select
-                          value={window.dayOfWeek}
-                          onChange={(e) => updateAvailabilityWindow(idx, 'dayOfWeek', parseInt(e.target.value))}
-                          className="w-full px-3 py-2 border rounded-lg bg-white"
-                        >
-                          {daysOfWeek.map((day, i) => (
-                            <option key={i} value={i}>{day}</option>
-                          ))}
-                        </select>
-                      </div>
+                    <div key={idx} className="grid grid-cols-1 gap-3 p-3 bg-slate-50 rounded-lg md:grid-cols-[1fr_1fr_120px_auto_120px_auto] md:items-end">
                       <div>
                         <label className="text-xs font-medium text-slate-500 mb-1 block">Start Date</label>
                         <input

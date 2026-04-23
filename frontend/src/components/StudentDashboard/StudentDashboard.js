@@ -18,10 +18,6 @@ function StudentDashboard() {
     handleLogout();
   };
 
-  const scrollToMyBookings = () => {
-    document.getElementById("my-bookings")?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -73,7 +69,7 @@ function StudentDashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={scrollToMyBookings}
+                  onClick={() => navigate("/student-my-bookings")}
                   className="inline-flex items-center justify-center rounded-2xl border border-primary/20 bg-white px-5 py-3 text-sm font-semibold text-primary transition hover:border-primary hover:bg-slate-50"
                 >
                   My Booking
@@ -102,10 +98,10 @@ function StudentDashboard() {
                   The frontend now uses one Tailwind-based visual system across auth screens, headers, and dashboards.
                 </p>
               </div>
-              <div id="my-bookings" className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">My Booking</p>
                 <p className="mt-3 text-sm leading-7 text-slate-200">
-                  Your submitted booking requests will be shown here when the student booking history module is connected.
+                  View pending, approved, rejected, and cancelled bookings from your own booking history.
                 </p>
               </div>
             </div>

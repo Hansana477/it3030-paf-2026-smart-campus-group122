@@ -10,6 +10,7 @@ import AdminBookingManagement from "./components/AdminDashboard/AdminBookingMana
 import AboutUs from "./components/AboutUs/AboutUs";
 
 import StudentResourceView from "./components/StudentDashboard/StudentResourceView";
+import StudentMyBookings from "./components/StudentDashboard/StudentMyBookings";
 import PublicRoute from "./components/PublicRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -26,6 +27,7 @@ function App() {
         <Route path="/admin-resource-management" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminResorceManagement /></ProtectedRoute>} />
         <Route path="/admin-booking-management" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminBookingManagement /></ProtectedRoute>} />
         <Route path="/student-resource-view" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentResourceView /></ProtectedRoute>} />
+        <Route path="/student-my-bookings" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentMyBookings /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
