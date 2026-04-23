@@ -349,35 +349,17 @@ const StudentResourceView = () => {
     }
     return 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
   };
-  const getSeatBookingStatus = (seatId) => {
-    const matchingBookings = resourceBookings.filter(booking =>
-      ['PENDING', 'APPROVED'].includes(booking.status) && booking.seatIds?.includes(seatId)
-    );
-    if (matchingBookings.some(booking => booking.status === 'APPROVED')) return 'APPROVED';
-    if (matchingBookings.some(booking => booking.status === 'PENDING')) return 'PENDING';
-    return null;
-  };
   const getSeatStateClasses = (seat, isSelected) => {
     if (seat.status && seat.status !== 'AVAILABLE') {
-      return 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed';
-    }
-    const bookingStatus = getSeatBookingStatus(seat.id);
-    if (bookingStatus === 'APPROVED') {
-      return 'border-red-200 bg-white text-slate-700 cursor-not-allowed';
-    }
-    if (bookingStatus === 'PENDING') {
-      return 'border-amber-200 bg-white text-slate-700 cursor-not-allowed';
+      return 'border-slate-200 bg-white text-slate-500 cursor-not-allowed';
     }
     if (isSelected) {
-      return 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm';
+      return 'border-slate-200 bg-white text-slate-700 shadow-sm';
     }
-    return 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50';
+    return 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50';
   };
   const getSeatIconClasses = (seat, isSelected) => {
     if (seat.status && seat.status !== 'AVAILABLE') return 'text-slate-400';
-    const bookingStatus = getSeatBookingStatus(seat.id);
-    if (bookingStatus === 'APPROVED') return 'text-red-600';
-    if (bookingStatus === 'PENDING') return 'text-amber-600';
     if (isSelected) return 'text-emerald-600';
     return 'text-slate-500';
   };
@@ -388,11 +370,6 @@ const StudentResourceView = () => {
   const toggleSeatSelection = (seat) => {
     if (seat.status && seat.status !== 'AVAILABLE') {
       showNotificationMessage('This seat is not available', 'error');
-      return;
-    }
-    const bookingStatus = getSeatBookingStatus(seat.id);
-    if (bookingStatus) {
-      showNotificationMessage(`Seat ${seat.number} is ${bookingStatus === 'PENDING' ? 'pending approval' : 'already booked'}`, 'error');
       return;
     }
     setSelectedSlot(null);
@@ -990,8 +967,6 @@ const StudentResourceView = () => {
                     <div className="mb-3 flex flex-wrap gap-3 text-xs text-slate-600">
                       <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-500" /> Available</span>
                       <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-emerald-600" /> Selected</span>
-                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-amber-600" /> Pending</span>
-                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-red-600" /> Booked</span>
                       <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-400" /> Unavailable</span>
                     </div>
                     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -1001,8 +976,7 @@ const StudentResourceView = () => {
                       >
                         {bookingResource.seatingLayout.seats.map(seat => {
                           const isSelected = selectedSeatIds.includes(seat.id);
-                          const bookingStatus = getSeatBookingStatus(seat.id);
-                          const disabled = Boolean(bookingStatus) || (seat.status && seat.status !== 'AVAILABLE');
+                          const disabled = seat.status && seat.status !== 'AVAILABLE';
                           return (
                             <button
                               key={seat.id}
@@ -1010,13 +984,9 @@ const StudentResourceView = () => {
                               disabled={disabled}
                               onClick={() => toggleSeatSelection(seat)}
                               title={
-                                bookingStatus === 'PENDING'
-                                  ? `Seat ${seat.number} has a pending booking`
-                                  : bookingStatus === 'APPROVED'
-                                    ? `Seat ${seat.number} is booked`
-                                    : seat.status && seat.status !== 'AVAILABLE'
-                                      ? `Seat ${seat.number} is ${seat.status.toLowerCase()}`
-                                      : `Seat ${seat.number} is available`
+                                seat.status && seat.status !== 'AVAILABLE'
+                                  ? `Seat ${seat.number} is ${seat.status.toLowerCase()}`
+                                  : `Seat ${seat.number} is available. Booked times are shown below after selection.`
                               }
                               className={`flex h-[72px] flex-col items-center justify-center rounded-lg border px-1 text-center text-xs font-semibold transition disabled:opacity-100 ${getSeatStateClasses(seat, isSelected)}`}
                             >
