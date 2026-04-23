@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../Header/Header";
-import StudentTicketPanel from "../Tickets/StudentTicketPanel";
 
 function StudentDashboard() {
   const navigate = useNavigate();
@@ -38,6 +37,22 @@ function StudentDashboard() {
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-500">
               Your account is ready. This dashboard now follows the new Smart Campus theme and is prepared for student-facing features.
             </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <button
+                onClick={() => navigate("/student-create-ticket")}
+                className="rounded-2xl bg-accent px-6 py-3 font-semibold text-white shadow-sm"
+              >
+                Create Maintenance Ticket
+              </button>
+
+              <button
+                onClick={() => navigate("/student-track-tickets")}
+                className="rounded-2xl bg-primary px-6 py-3 font-semibold text-white shadow-sm"
+              >
+                Track My Tickets
+              </button>
+            </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
@@ -99,8 +114,6 @@ function StudentDashboard() {
           </article>
         </section>
 
-        <StudentTicketPanel />
-        
       </section>
     </main>
   );

@@ -10,6 +10,8 @@ import AdminBookingManagement from "./components/AdminDashboard/AdminBookingMana
 import StudentResourceView from "./components/StudentDashboard/StudentResourceView";
 import PublicRoute from "./components/PublicRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
+import StudentCreateTicketPage from "./components/Tickets/StudentCreateTicketPage";
+import StudentTrackTicketsPage from "./components/Tickets/StudentTrackTicketsPage";
 
 function App() {
   return (
@@ -25,6 +27,10 @@ function App() {
         <Route path="/admin-booking-management" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminBookingManagement /></ProtectedRoute>} />
         <Route path="/student-resource-view" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentResourceView /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />
+        
+        <Route path="/student-create-ticket" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentCreateTicketPage /></ProtectedRoute>} />
+
+        <Route path="/student-track-tickets" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentTrackTicketsPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );
