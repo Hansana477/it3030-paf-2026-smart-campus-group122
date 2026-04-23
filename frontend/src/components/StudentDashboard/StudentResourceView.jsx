@@ -327,6 +327,28 @@ const StudentResourceView = () => {
       return toMinutes(slot.startTime) < toMinutes(booking.endTime) && toMinutes(slot.endTime) > toMinutes(booking.startTime);
     });
   };
+  const getSlotBookingStatus = (seatId, slot) => {
+    const matchingBookings = resourceBookings.filter(booking => {
+      if (!['PENDING', 'APPROVED'].includes(booking.status)) return false;
+      if (!booking.seatIds?.includes(seatId)) return false;
+      return toMinutes(slot.startTime) < toMinutes(booking.endTime) && toMinutes(slot.endTime) > toMinutes(booking.startTime);
+    });
+    if (matchingBookings.some(booking => booking.status === 'APPROVED')) return 'APPROVED';
+    if (matchingBookings.some(booking => booking.status === 'PENDING')) return 'PENDING';
+    return null;
+  };
+  const getSlotStateClasses = (slotStatus, selected) => {
+    if (slotStatus === 'APPROVED') {
+      return 'border border-red-200 bg-red-100 text-red-700 cursor-not-allowed';
+    }
+    if (slotStatus === 'PENDING') {
+      return 'border border-amber-200 bg-amber-100 text-amber-700 cursor-not-allowed';
+    }
+    if (selected) {
+      return 'bg-primary text-white';
+    }
+    return 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
+  };
   const getSeatBookingStatus = (seatId) => {
     const matchingBookings = resourceBookings.filter(booking =>
       ['PENDING', 'APPROVED'].includes(booking.status) && booking.seatIds?.includes(seatId)
@@ -337,19 +359,31 @@ const StudentResourceView = () => {
   };
   const getSeatStateClasses = (seat, isSelected) => {
     if (seat.status && seat.status !== 'AVAILABLE') {
-      return 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed';
+      return 'border-slate-200 bg-slate-100 text-slate-500 cursor-not-allowed';
     }
     const bookingStatus = getSeatBookingStatus(seat.id);
     if (bookingStatus === 'APPROVED') {
-      return 'border-red-300 bg-red-100 text-red-700 cursor-not-allowed';
+      return 'border-red-200 bg-white text-slate-700 cursor-not-allowed';
     }
     if (bookingStatus === 'PENDING') {
-      return 'border-amber-300 bg-amber-100 text-amber-700 cursor-not-allowed';
+      return 'border-amber-200 bg-white text-slate-700 cursor-not-allowed';
     }
     if (isSelected) {
-      return 'border-emerald-500 bg-emerald-500 text-white shadow-sm';
+      return 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm';
     }
     return 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50';
+  };
+  const getSeatIconClasses = (seat, isSelected) => {
+    if (seat.status && seat.status !== 'AVAILABLE') return 'text-slate-400';
+    const bookingStatus = getSeatBookingStatus(seat.id);
+    if (bookingStatus === 'APPROVED') return 'text-red-600';
+    if (bookingStatus === 'PENDING') return 'text-amber-600';
+    if (isSelected) return 'text-emerald-600';
+    return 'text-slate-500';
+  };
+  const formatSeatType = (type) => {
+    if (!type) return 'Standard';
+    return type.toLowerCase().split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
   };
   const toggleSeatSelection = (seat) => {
     if (seat.status && seat.status !== 'AVAILABLE') {
@@ -963,7 +997,7 @@ const StudentResourceView = () => {
                     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div
                         className="grid gap-2 min-w-max"
-                        style={{ gridTemplateColumns: `repeat(${bookingResource.seatingLayout.cols}, 64px)` }}
+                        style={{ gridTemplateColumns: `repeat(${bookingResource.seatingLayout.cols}, 76px)` }}
                       >
                         {bookingResource.seatingLayout.seats.map(seat => {
                           const isSelected = selectedSeatIds.includes(seat.id);
@@ -984,10 +1018,11 @@ const StudentResourceView = () => {
                                       ? `Seat ${seat.number} is ${seat.status.toLowerCase()}`
                                       : `Seat ${seat.number} is available`
                               }
-                              className={`flex h-14 flex-col items-center justify-center rounded-lg border text-xs font-semibold transition disabled:opacity-100 ${getSeatStateClasses(seat, isSelected)}`}
+                              className={`flex h-[72px] flex-col items-center justify-center rounded-lg border px-1 text-center text-xs font-semibold transition disabled:opacity-100 ${getSeatStateClasses(seat, isSelected)}`}
                             >
-                              <Armchair className="h-5 w-5" />
+                              <Armchair className={`h-5 w-5 ${getSeatIconClasses(seat, isSelected)}`} />
                               <span>{seat.number}</span>
+                              <span className="mt-0.5 max-w-full truncate text-[10px] font-medium opacity-75">{formatSeatType(seat.type)}</span>
                             </button>
                           );
                         })}
@@ -1009,12 +1044,14 @@ const StudentResourceView = () => {
                               <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
                                 <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">Available</span>
                                 <span className="rounded bg-primary px-2 py-1 text-white">Selected</span>
-                                <span className="rounded bg-slate-100 px-2 py-1 text-slate-400">Unavailable</span>
+                                <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">Pending</span>
+                                <span className="rounded bg-red-100 px-2 py-1 text-red-700">Booked</span>
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap gap-2">
                               {getBookingSlots(bookingResource, bookingDate).map(slot => {
-                                const blocked = isSlotBookedForSeat(seatId, slot);
+                                const slotStatus = getSlotBookingStatus(seatId, slot);
+                                const blocked = Boolean(slotStatus);
                                 const selected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
                                 return (
                                   <button
@@ -1022,11 +1059,7 @@ const StudentResourceView = () => {
                                     type="button"
                                     disabled={blocked}
                                     onClick={() => setSelectedSlot(slot)}
-                                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:border disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 ${
-                                      selected
-                                        ? 'bg-primary text-white'
-                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                    }`}
+                                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-100 ${getSlotStateClasses(slotStatus, selected)}`}
                                   >
                                     {slot.startTime} - {slot.endTime}
                                   </button>
