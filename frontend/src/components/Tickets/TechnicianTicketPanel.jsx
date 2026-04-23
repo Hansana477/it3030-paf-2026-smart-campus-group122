@@ -1,189 +1,353 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { addComment, deleteComment, getTickets, updateComment, updateTicketStatus } from "./TicketApi";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle2,
+  ClipboardList,
+  Eye,
+  Loader2,
+  RefreshCw,
+  Search,
+  Wrench,
+} from "lucide-react";
+import TicketStatusBadge from "./TicketStatusBadge";
+import TicketDetailsModal from "./TicketDetailsModal";
+import { assignTicket, fetchTicketById, fetchTickets, updateTicketStatus } from "./ticketsApi";
 
-export default function TechnicianTicketPanel() {
-    const [tickets, setTickets] = useState([]);
-    const [selectedTicketId, setSelectedTicketId] = useState("");
-    const [commentText, setCommentText] = useState("");
-    const [status, setStatus] = useState("IN_PROGRESS");
-    const [resolutionNotes, setResolutionNotes] = useState("");
-    const [error, setError] = useState("");
+function formatDateTime(value) {
+  if (!value) {
+    return "Not available";
+  }
 
-    const loadTickets = useCallback(async () => {
-    try {
-        setError("");
-        const data = await getTickets();
-        setTickets(Array.isArray(data) ? data : []);
-        setSelectedTicketId((current) => {
-        if (current && data?.some((ticket) => ticket.id === current)) {
-            return current;
-        }
-        return data?.length ? data[0].id : "";
-        });
-    } catch (err) {
-        setError(err.message || "Failed to load tickets.");
-    }
-    }, []);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Not available";
+  }
 
-    useEffect(() => {
-    loadTickets();
-    }, [loadTickets]);
-
-    const selectedTicket = useMemo(
-        () => tickets.find((ticket) => ticket.id === selectedTicketId) || null,
-        [tickets, selectedTicketId]
-    );
-
-    const handleStatusSave = async () => {
-        if (!selectedTicket) return;
-        try {
-        setError("");
-        await updateTicketStatus(selectedTicket.id, { status, resolutionNotes });
-        setResolutionNotes("");
-        await loadTickets();
-        } catch (err) {
-        setError(err.message || "Failed to update status.");
-        }
-    };
-
-    const handleAddComment = async () => {
-        if (!selectedTicket || !commentText.trim()) return;
-        try {
-        setError("");
-        await addComment(selectedTicket.id, commentText);
-        setCommentText("");
-        await loadTickets();
-        } catch (err) {
-        setError(err.message || "Failed to add comment.");
-        }
-    };
-
-    const handleEditComment = async (comment) => {
-        const next = window.prompt("Edit comment", comment.commentText);
-        if (!next || !next.trim()) return;
-        try {
-        await updateComment(selectedTicket.id, comment.id, next);
-        await loadTickets();
-        } catch (err) {
-        setError(err.message || "Failed to update comment.");
-        }
-    };
-
-    const handleDeleteComment = async (commentId) => {
-        try {
-        await deleteComment(selectedTicket.id, commentId);
-        await loadTickets();
-        } catch (err) {
-        setError(err.message || "Failed to delete comment.");
-        }
-    };
-
-    return (
-        <section className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Assigned tickets</p>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary">Technician work queue</h2>
-
-            {error ? <div className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
-
-            <div className="mt-5 grid gap-3">
-            {tickets.map((ticket) => (
-                <button
-                key={ticket.id}
-                onClick={() => setSelectedTicketId(ticket.id)}
-                className={`rounded-2xl border px-4 py-4 text-left ${selectedTicketId === ticket.id ? "border-accent bg-accent/5" : "border-slate-200 bg-slate-50/70"}`}
-                >
-                <div className="flex items-center justify-between gap-3">
-                    <strong className="text-primary">Ticket #{ticket.id.slice(-6)}</strong>
-                    <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold">{ticket.status}</span>
-                </div>
-                <p className="mt-2 text-sm text-slate-600">{ticket.category} • {ticket.priority}</p>
-                <p className="text-sm text-slate-500">{ticket.location}</p>
-                </button>
-            ))}
-            </div>
-        </article>
-
-        <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-            {!selectedTicket ? (
-            <p className="text-slate-500">Select a ticket to continue.</p>
-            ) : (
-            <>
-                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Ticket details</p>
-                <h2 className="mt-4 text-3xl font-extrabold text-primary">Issue workflow</h2>
-
-                <p className="mt-4 text-slate-700"><strong>Description:</strong> {selectedTicket.description}</p>
-                <p className="mt-2 text-slate-700"><strong>Reported by:</strong> {selectedTicket.createdByUserName}</p>
-                <p className="mt-2 text-slate-700"><strong>Preferred contact:</strong> {selectedTicket.preferredContact}</p>
-
-                {!!selectedTicket.attachments?.length && (
-                <div className="mt-4 flex flex-wrap gap-3">
-                    {selectedTicket.attachments.map((attachment) => (
-                    <img
-                        key={attachment.id}
-                        src={attachment.fileUrl}
-                        alt={attachment.originalFileName}
-                        className="h-28 w-40 rounded-2xl border border-slate-200 object-cover"
-                    />
-                    ))}
-                </div>
-                )}
-
-                <div className="mt-6 grid gap-3">
-                <select
-                    className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                >
-                    {["IN_PROGRESS", "RESOLVED", "CLOSED"].map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                    ))}
-                </select>
-
-                <textarea
-                    className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3"
-                    rows={4}
-                    placeholder="Resolution notes"
-                    value={resolutionNotes}
-                    onChange={(e) => setResolutionNotes(e.target.value)}
-                />
-
-                <button className="rounded-2xl bg-accent px-4 py-3 font-semibold text-white" onClick={handleStatusSave}>
-                    Update status
-                </button>
-                </div>
-
-                <div className="mt-6">
-                <h3 className="text-lg font-bold text-primary">Comments</h3>
-                <div className="mt-3 grid gap-3">
-                    {(selectedTicket.comments || []).map((comment) => (
-                    <div key={comment.id} className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <p className="text-slate-700">{comment.commentText}</p>
-                        <p className="mt-1 text-xs text-slate-500">By {comment.authorName}</p>
-                        <div className="mt-2 flex gap-2">
-                        <button className="rounded-xl bg-slate-200 px-3 py-1 text-sm" onClick={() => handleEditComment(comment)}>Edit</button>
-                        <button className="rounded-xl bg-red-100 px-3 py-1 text-sm text-red-700" onClick={() => handleDeleteComment(comment.id)}>Delete</button>
-                        </div>
-                    </div>
-                    ))}
-                </div>
-
-                <div className="mt-4 flex flex-col gap-3">
-                    <textarea
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
-                    rows={3}
-                    placeholder="Write a comment"
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    />
-                    <button className="rounded-2xl bg-primary px-4 py-3 font-semibold text-white" onClick={handleAddComment}>
-                    Add comment
-                    </button>
-                </div>
-                </div>
-            </>
-            )}
-        </article>
-        </section>
-    );
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
+
+function TechnicianTicketPanel() {
+  const storedUser = localStorage.getItem("user");
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  const [tickets, setTickets] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [panelError, setPanelError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  const loadTickets = async () => {
+    setLoading(true);
+    setPanelError("");
+
+    try {
+      const data = await fetchTickets({
+        status: statusFilter === "ALL" ? "" : statusFilter,
+        search: searchTerm,
+      });
+      setTickets(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setPanelError(error.message || "Failed to load tickets.");
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTickets();
+  }, [statusFilter]);
+
+  const filteredTickets = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) {
+      return tickets;
+    }
+
+    return tickets.filter((ticket) =>
+      [
+        ticket.ticketNumber,
+        ticket.resourceName,
+        ticket.location,
+        ticket.category,
+        ticket.description,
+      ]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(keyword))
+    );
+  }, [tickets, searchTerm]);
+
+  const openDetails = async (ticketId) => {
+    try {
+      const fullTicket = await fetchTicketById(ticketId);
+      setSelectedTicket(fullTicket);
+      setShowDetails(true);
+    } catch (error) {
+      setPanelError(error.message || "Failed to load ticket details.");
+    }
+  };
+
+  const handleTicketUpdated = (updatedTicket) => {
+    setSelectedTicket(updatedTicket);
+    setTickets((current) =>
+      current.map((ticket) => (ticket.id === updatedTicket.id ? updatedTicket : ticket))
+    );
+  };
+
+  const handleClaimTicket = async (ticket) => {
+    try {
+      const updated = await assignTicket(ticket.id, currentUser.id);
+      handleTicketUpdated(updated);
+      setTickets((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item))
+      );
+    } catch (error) {
+      setPanelError(error.message || "Failed to claim ticket.");
+    }
+  };
+
+  const handleStartWork = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    try {
+      const updated = await updateTicketStatus(selectedTicket.id, {
+        status: "IN_PROGRESS",
+      });
+      handleTicketUpdated(updated);
+    } catch (error) {
+      setPanelError(error.message || "Failed to update status.");
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const resolutionNotes = window.prompt("Enter resolution notes:");
+    if (!resolutionNotes || !resolutionNotes.trim()) {
+      return;
+    }
+
+    try {
+      const updated = await updateTicketStatus(selectedTicket.id, {
+        status: "RESOLVED",
+        resolutionNotes: resolutionNotes.trim(),
+      });
+      handleTicketUpdated(updated);
+    } catch (error) {
+      setPanelError(error.message || "Failed to resolve ticket.");
+    }
+  };
+
+  const summary = {
+    visible: tickets.length,
+    assignedToMe: tickets.filter((ticket) => ticket.assignedTechnicianId === currentUser?.id).length,
+    openQueue: tickets.filter((ticket) => ticket.status === "OPEN" && !ticket.assignedTechnicianId).length,
+    inProgress: tickets.filter((ticket) => ticket.status === "IN_PROGRESS").length,
+  };
+
+  return (
+    <>
+      <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Module C</p>
+          <h2 className="mt-3 text-3xl font-extrabold text-primary">Technician Ticket Workspace</h2>
+          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-500">
+            View assigned incidents, claim unassigned open work, update progress, add resolution notes, and communicate with users.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-4">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+            <p className="text-sm text-slate-400">Visible Tickets</p>
+            <p className="mt-2 text-3xl font-extrabold text-primary">{summary.visible}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-blue-50 p-5">
+            <p className="text-sm text-blue-600">Assigned To Me</p>
+            <p className="mt-2 text-3xl font-extrabold text-blue-700">{summary.assignedToMe}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-sky-50 p-5">
+            <p className="text-sm text-sky-600">Open Queue</p>
+            <p className="mt-2 text-3xl font-extrabold text-sky-700">{summary.openQueue}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-amber-50 p-5">
+            <p className="text-sm text-amber-600">In Progress</p>
+            <p className="mt-2 text-3xl font-extrabold text-amber-700">{summary.inProgress}</p>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-lg font-extrabold text-primary">Technician Ticket Queue</h3>
+
+            <button
+              type="button"
+              onClick={loadTickets}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+          </div>
+
+          {panelError ? (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {panelError}
+            </div>
+          ) : null}
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_0.8fr]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search tickets..."
+                className="w-full rounded-3xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+              />
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="OPEN">OPEN</option>
+              <option value="IN_PROGRESS">IN PROGRESS</option>
+              <option value="RESOLVED">RESOLVED</option>
+            </select>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {loading ? (
+              <div className="flex items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white px-4 py-14 text-slate-500">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Loading tickets...</span>
+                </div>
+              </div>
+            ) : null}
+
+            {!loading && !filteredTickets.length ? (
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-4 py-14 text-center text-sm text-slate-500">
+                No technician-visible tickets found.
+              </div>
+            ) : null}
+
+            {!loading &&
+              filteredTickets.map((ticket) => {
+                const assignedToMe = ticket.assignedTechnicianId === currentUser?.id;
+                const claimable = ticket.status === "OPEN" && !ticket.assignedTechnicianId;
+
+                return (
+                  <article key={ticket.id} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                            <ClipboardList className="h-3.5 w-3.5" />
+                            {ticket.ticketNumber}
+                          </div>
+                          <TicketStatusBadge value={ticket.status} />
+                          <TicketStatusBadge value={ticket.priority} type="priority" />
+                        </div>
+
+                        <h4 className="mt-4 text-lg font-extrabold text-primary">{ticket.resourceName}</h4>
+                        <p className="mt-1 text-sm text-slate-500">{ticket.location}</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-700">{ticket.category}</p>
+                        <p className="mt-2 line-clamp-2 text-sm leading-7 text-slate-600">{ticket.description}</p>
+                        <p className="mt-3 text-xs uppercase tracking-wide text-slate-400">
+                          Updated {formatDateTime(ticket.updatedAt)}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openDetails(ticket.id)}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </button>
+
+                        {claimable ? (
+                          <button
+                            type="button"
+                            onClick={() => handleClaimTicket(ticket)}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-accent px-4 py-2 text-sm font-bold text-white"
+                          >
+                            <Wrench className="h-4 w-4" />
+                            Claim
+                          </button>
+                        ) : null}
+
+                        {assignedToMe ? (
+                          <span className="rounded-2xl bg-blue-50 px-4 py-2 text-center text-xs font-bold text-blue-700">
+                            Assigned to you
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+          </div>
+        </div>
+      </section>
+
+      <TicketDetailsModal
+        open={showDetails}
+        onClose={() => setShowDetails(false)}
+        ticket={selectedTicket}
+        currentUser={currentUser}
+        onTicketUpdated={handleTicketUpdated}
+        rightPanel={
+          selectedTicket ? (
+            <section className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+              <h3 className="text-lg font-extrabold text-primary">Technician Actions</h3>
+
+              <div className="mt-4 grid gap-3">
+                {selectedTicket.status === "OPEN" &&
+                selectedTicket.assignedTechnicianId === currentUser?.id ? (
+                  <button
+                    type="button"
+                    onClick={handleStartWork}
+                    className="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-bold text-white"
+                  >
+                    Start Work
+                  </button>
+                ) : null}
+
+                {selectedTicket.status === "IN_PROGRESS" &&
+                selectedTicket.assignedTechnicianId === currentUser?.id ? (
+                  <button
+                    type="button"
+                    onClick={handleResolve}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mark Resolved
+                  </button>
+                ) : null}
+              </div>
+            </section>
+          ) : null
+        }
+      />
+    </>
+  );
+}
+
+export default TechnicianTicketPanel;

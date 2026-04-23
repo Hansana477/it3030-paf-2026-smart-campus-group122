@@ -1,136 +1,447 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { assignTicket, getTickets, updateTicketStatus } from "./TicketApi";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  CheckCheck,
+  Eye,
+  Loader2,
+  RefreshCw,
+  Search,
+  Shield,
+  UserCheck,
+  Users,
+} from "lucide-react";
+import TicketStatusBadge from "./TicketStatusBadge";
+import TicketDetailsModal from "./TicketDetailsModal";
+import {
+  assignTicket,
+  fetchApprovedTechnicians,
+  fetchTicketById,
+  fetchTickets,
+  reopenTicket,
+  updateTicketStatus,
+} from "./ticketsApi";
 
-export default function AdminTicketPanel({ technicians = [] }) {
-    const [tickets, setTickets] = useState([]);
-    const [selectedTicketId, setSelectedTicketId] = useState("");
-    const [technicianId, setTechnicianId] = useState("");
-    const [rejectionReason, setRejectionReason] = useState("");
-    const [error, setError] = useState("");
+function formatDateTime(value) {
+  if (!value) {
+    return "Not available";
+  }
 
-    const loadTickets = useCallback(async () => {
-    try {
-        setError("");
-        const data = await getTickets();
-        setTickets(Array.isArray(data) ? data : []);
-        setSelectedTicketId((current) => {
-        if (current && data?.some((ticket) => ticket.id === current)) {
-            return current;
-        }
-        return data?.length ? data[0].id : "";
-        });
-    } catch (err) {
-        setError(err.message || "Failed to load tickets.");
-    }
-    }, []);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Not available";
+  }
 
-    useEffect(() => {
-    loadTickets();
-    }, [loadTickets]);
-
-    const selectedTicket = useMemo(
-        () => tickets.find((ticket) => ticket.id === selectedTicketId) || null,
-        [tickets, selectedTicketId]
-    );
-
-    const handleAssign = async () => {
-        if (!selectedTicket || !technicianId) return;
-        try {
-        setError("");
-        await assignTicket(selectedTicket.id, technicianId);
-        setTechnicianId("");
-        await loadTickets();
-        } catch (err) {
-        setError(err.message || "Failed to assign ticket.");
-        }
-    };
-
-    const handleReject = async () => {
-        if (!selectedTicket || !rejectionReason.trim()) return;
-        try {
-        setError("");
-        await updateTicketStatus(selectedTicket.id, {
-            status: "REJECTED",
-            rejectionReason,
-        });
-        setRejectionReason("");
-        await loadTickets();
-        } catch (err) {
-        setError(err.message || "Failed to reject ticket.");
-        }
-    };
-
-    return (
-        <section className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Maintenance requests</p>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary">All tickets</h2>
-
-            {error ? <div className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
-
-            <div className="mt-5 grid gap-3">
-            {tickets.map((ticket) => (
-                <button
-                key={ticket.id}
-                onClick={() => setSelectedTicketId(ticket.id)}
-                className={`rounded-2xl border px-4 py-4 text-left ${selectedTicketId === ticket.id ? "border-accent bg-accent/5" : "border-slate-200 bg-slate-50/70"}`}
-                >
-                <div className="flex items-center justify-between gap-3">
-                    <strong className="text-primary">Ticket #{ticket.id.slice(-6)}</strong>
-                    <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold">{ticket.status}</span>
-                </div>
-                <p className="mt-2 text-sm text-slate-600">{ticket.category} • {ticket.priority}</p>
-                <p className="text-sm text-slate-500">{ticket.location}</p>
-                </button>
-            ))}
-            </div>
-        </article>
-
-        <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-            {!selectedTicket ? (
-            <p className="text-slate-500">Select a ticket to continue.</p>
-            ) : (
-            <>
-                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Admin tools</p>
-                <h2 className="mt-4 text-3xl font-extrabold text-primary">Assign or reject</h2>
-
-                <p className="mt-4 text-slate-700"><strong>Reported by:</strong> {selectedTicket.createdByUserName}</p>
-                <p className="mt-2 text-slate-700"><strong>Description:</strong> {selectedTicket.description}</p>
-                <p className="mt-2 text-slate-700"><strong>Current technician:</strong> {selectedTicket.assignedToUserName || "Not assigned"}</p>
-
-                <div className="mt-6 grid gap-3">
-                <select
-                    className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3"
-                    value={technicianId}
-                    onChange={(e) => setTechnicianId(e.target.value)}
-                >
-                    <option value="">Select technician</option>
-                    {technicians.map((tech) => (
-                    <option key={tech.id} value={tech.id}>
-                        {tech.fullName}
-                    </option>
-                    ))}
-                </select>
-
-                <button className="rounded-2xl bg-accent px-4 py-3 font-semibold text-white" onClick={handleAssign}>
-                    Assign technician
-                </button>
-
-                <textarea
-                    className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3"
-                    rows={4}
-                    placeholder="Rejection reason"
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                />
-
-                <button className="rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white" onClick={handleReject}>
-                    Reject ticket
-                </button>
-                </div>
-            </>
-            )}
-        </article>
-        </section>
-    );
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
+
+function AdminTicketPanel({ technicians = [] }) {
+  const storedUser = localStorage.getItem("user");
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+
+  const [tickets, setTickets] = useState([]);
+  const [approvedTechnicians, setApprovedTechnicians] = useState(technicians);
+  const [loading, setLoading] = useState(true);
+  const [panelError, setPanelError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState("");
+
+  const loadAll = async () => {
+    setLoading(true);
+    setPanelError("");
+
+    try {
+      const [ticketData, technicianData] = await Promise.all([
+        fetchTickets({
+          status: statusFilter === "ALL" ? "" : statusFilter,
+          search: searchTerm,
+        }),
+        fetchApprovedTechnicians(),
+      ]);
+
+      setTickets(Array.isArray(ticketData) ? ticketData : []);
+      setApprovedTechnicians(Array.isArray(technicianData) ? technicianData : []);
+    } catch (error) {
+      setPanelError(error.message || "Failed to load admin ticket data.");
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAll();
+  }, [statusFilter]);
+
+  const filteredTickets = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) {
+      return tickets;
+    }
+
+    return tickets.filter((ticket) =>
+      [
+        ticket.ticketNumber,
+        ticket.resourceName,
+        ticket.location,
+        ticket.category,
+        ticket.description,
+        ticket.createdByUserName,
+        ticket.assignedTechnicianName,
+      ]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(keyword))
+    );
+  }, [tickets, searchTerm]);
+
+  const openDetails = async (ticketId) => {
+    try {
+      const fullTicket = await fetchTicketById(ticketId);
+      setSelectedTicket(fullTicket);
+      setSelectedTechnicianId(fullTicket.assignedTechnicianId || "");
+      setShowDetails(true);
+    } catch (error) {
+      setPanelError(error.message || "Failed to load ticket details.");
+    }
+  };
+
+  const handleTicketUpdated = (updatedTicket) => {
+    setSelectedTicket(updatedTicket);
+    setSelectedTechnicianId(updatedTicket.assignedTechnicianId || "");
+    setTickets((current) =>
+      current.map((ticket) => (ticket.id === updatedTicket.id ? updatedTicket : ticket))
+    );
+  };
+
+  const handleAssign = async () => {
+    if (!selectedTicket || !selectedTechnicianId) {
+      return;
+    }
+
+    try {
+      const updated = await assignTicket(selectedTicket.id, selectedTechnicianId);
+      handleTicketUpdated(updated);
+    } catch (error) {
+      setPanelError(error.message || "Failed to assign ticket.");
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const rejectionReason = window.prompt("Enter rejection reason:");
+    if (!rejectionReason || !rejectionReason.trim()) {
+      return;
+    }
+
+    try {
+      const updated = await updateTicketStatus(selectedTicket.id, {
+        status: "REJECTED",
+        rejectionReason: rejectionReason.trim(),
+      });
+      handleTicketUpdated(updated);
+    } catch (error) {
+      setPanelError(error.message || "Failed to reject ticket.");
+    }
+  };
+
+  const handleClose = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    try {
+      const updated = await updateTicketStatus(selectedTicket.id, {
+        status: "CLOSED",
+      });
+      handleTicketUpdated(updated);
+    } catch (error) {
+      setPanelError(error.message || "Failed to close ticket.");
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const reason = window.prompt("Enter reopen reason:");
+    if (!reason || !reason.trim()) {
+      return;
+    }
+
+    try {
+      const updated = await reopenTicket(selectedTicket.id, reason.trim());
+      handleTicketUpdated(updated);
+    } catch (error) {
+      setPanelError(error.message || "Failed to reopen ticket.");
+    }
+  };
+
+  const technicianWorkload = approvedTechnicians.map((technician) => ({
+    id: technician.id,
+    fullName: technician.fullName,
+    count: tickets.filter(
+      (ticket) =>
+        ticket.assignedTechnicianId === technician.id &&
+        ["OPEN", "IN_PROGRESS", "RESOLVED"].includes(ticket.status)
+    ).length,
+  }));
+
+  const summary = {
+    all: tickets.length,
+    open: tickets.filter((ticket) => ticket.status === "OPEN").length,
+    resolved: tickets.filter((ticket) => ticket.status === "RESOLVED").length,
+    rejected: tickets.filter((ticket) => ticket.status === "REJECTED").length,
+  };
+
+  return (
+    <>
+      <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Module C</p>
+          <h2 className="mt-3 text-3xl font-extrabold text-primary">Admin Ticket Control Center</h2>
+          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-500">
+            Monitor all maintenance incidents, assign technicians, reject invalid requests, close resolved work, and review comment activity.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-4">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+            <p className="text-sm text-slate-400">All Tickets</p>
+            <p className="mt-2 text-3xl font-extrabold text-primary">{summary.all}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-sky-50 p-5">
+            <p className="text-sm text-sky-600">Open</p>
+            <p className="mt-2 text-3xl font-extrabold text-sky-700">{summary.open}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-emerald-50 p-5">
+            <p className="text-sm text-emerald-600">Resolved</p>
+            <p className="mt-2 text-3xl font-extrabold text-emerald-700">{summary.resolved}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-rose-50 p-5">
+            <p className="text-sm text-rose-600">Rejected</p>
+            <p className="mt-2 text-3xl font-extrabold text-rose-700">{summary.rejected}</p>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+          <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-lg font-extrabold text-primary">All Incident Tickets</h3>
+
+              <button
+                type="button"
+                onClick={loadAll}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </button>
+            </div>
+
+            {panelError ? (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {panelError}
+              </div>
+            ) : null}
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_0.7fr]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search tickets..."
+                  className="w-full rounded-3xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+                />
+              </div>
+
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="OPEN">OPEN</option>
+                <option value="IN_PROGRESS">IN PROGRESS</option>
+                <option value="RESOLVED">RESOLVED</option>
+                <option value="CLOSED">CLOSED</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {loading ? (
+                <div className="flex items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white px-4 py-14 text-slate-500">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Loading tickets...</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {!loading && !filteredTickets.length ? (
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-4 py-14 text-center text-sm text-slate-500">
+                  No tickets found.
+                </div>
+              ) : null}
+
+              {!loading &&
+                filteredTickets.map((ticket) => (
+                  <article key={ticket.id} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                            <Shield className="h-3.5 w-3.5" />
+                            {ticket.ticketNumber}
+                          </div>
+                          <TicketStatusBadge value={ticket.status} />
+                          <TicketStatusBadge value={ticket.priority} type="priority" />
+                        </div>
+
+                        <h4 className="mt-4 text-lg font-extrabold text-primary">{ticket.resourceName}</h4>
+                        <p className="mt-1 text-sm text-slate-500">{ticket.location}</p>
+                        <p className="mt-2 text-sm text-slate-600">
+                          Reported by <span className="font-semibold text-primary">{ticket.createdByUserName}</span>
+                        </p>
+                        <p className="mt-2 text-sm text-slate-600">
+                          Assigned to <span className="font-semibold text-primary">{ticket.assignedTechnicianName || "No technician yet"}</span>
+                        </p>
+                        <p className="mt-3 text-xs uppercase tracking-wide text-slate-400">
+                          Updated {formatDateTime(ticket.updatedAt)}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openDetails(ticket.id)}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View
+                      </button>
+                    </div>
+                  </article>
+                ))}
+            </div>
+          </div>
+
+          <section className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-accent" />
+              <h3 className="text-lg font-extrabold text-primary">Technician Workload</h3>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {!technicianWorkload.length ? (
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                  No approved technicians found.
+                </div>
+              ) : null}
+
+              {technicianWorkload.map((technician) => (
+                <div key={technician.id} className="rounded-3xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-primary">{technician.fullName}</p>
+                      <p className="mt-1 text-xs uppercase tracking-wide text-slate-400">Active assignments</p>
+                    </div>
+                    <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-blue-700">
+                      {technician.count}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <TicketDetailsModal
+        open={showDetails}
+        onClose={() => setShowDetails(false)}
+        ticket={selectedTicket}
+        currentUser={currentUser}
+        onTicketUpdated={handleTicketUpdated}
+        rightPanel={
+          selectedTicket ? (
+            <section className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+              <h3 className="text-lg font-extrabold text-primary">Admin Actions</h3>
+
+              <div className="mt-4">
+                <label className="mb-2 block text-sm font-bold text-primary">Assign Technician</label>
+                <select
+                  value={selectedTechnicianId}
+                  onChange={(event) => setSelectedTechnicianId(event.target.value)}
+                  className="w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+                >
+                  <option value="">Select technician</option>
+                  {approvedTechnicians.map((technician) => (
+                    <option key={technician.id} value={technician.id}>
+                      {technician.fullName}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAssign}
+                  disabled={!selectedTechnicianId}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Assign Ticket
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {selectedTicket.status === "RESOLVED" ? (
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white"
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    Close Ticket
+                  </button>
+                ) : null}
+
+                {["OPEN", "IN_PROGRESS"].includes(selectedTicket.status) ? (
+                  <button
+                    type="button"
+                    onClick={handleReject}
+                    className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"
+                  >
+                    Reject Ticket
+                  </button>
+                ) : null}
+
+                {["CLOSED", "REJECTED", "RESOLVED"].includes(selectedTicket.status) ? (
+                  <button
+                    type="button"
+                    onClick={handleReopen}
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700"
+                  >
+                    Reopen Ticket
+                  </button>
+                ) : null}
+              </div>
+            </section>
+          ) : null
+        }
+      />
+    </>
+  );
+}
+
+export default AdminTicketPanel;
