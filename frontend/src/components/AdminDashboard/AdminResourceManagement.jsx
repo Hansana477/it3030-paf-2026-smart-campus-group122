@@ -370,11 +370,37 @@ const AdminResourceManagement = () => {
     setTimeout(() => setShowNotification(false), 3000);
   };
 
+  const syncSavedResource = (savedResource, formMode = 'layout') => {
+    setResources(prev => prev.map(resource => resource.id === savedResource.id ? savedResource : resource));
+    setSelectedResource(current => current?.id === savedResource.id ? savedResource : current);
+
+    if (formMode === 'full') {
+      setResourceForm(savedResource);
+    } else if (formMode === 'layout') {
+      setResourceForm(current => ({
+        ...current,
+        capacity: savedResource.capacity,
+        seatingLayout: savedResource.seatingLayout,
+      }));
+    }
+
+    if (savedResource.seatingLayout) {
+      setSeatGridRows(savedResource.seatingLayout.rows);
+      setSeatGridCols(savedResource.seatingLayout.cols);
+    }
+  };
+
   const supportsSeatLayout = (type) => SEAT_LAYOUT_RESOURCE_TYPES.includes(type);
 
   const getSeatLayoutCapacity = (resource) => {
     if (!supportsSeatLayout(resource.type)) return resource.type === 'EQUIPMENT' ? 1 : 0;
-    if (resource.seatingLayout?.seats?.length) return resource.seatingLayout.seats.length;
+    if (
+      resource.seatingLayout?.seats?.length &&
+      resource.seatingLayout.rows === seatGridRows &&
+      resource.seatingLayout.cols === seatGridCols
+    ) {
+      return resource.seatingLayout.seats.length;
+    }
     return seatGridRows * seatGridCols;
   };
 
@@ -484,6 +510,21 @@ const AdminResourceManagement = () => {
     return seats;
   };
 
+  const getLayoutForCurrentGrid = (resource) => {
+    if (!supportsSeatLayout(resource.type)) return null;
+
+    const existingLayout = resource.seatingLayout;
+    if (existingLayout?.seats?.length && existingLayout.rows === seatGridRows && existingLayout.cols === seatGridCols) {
+      return existingLayout;
+    }
+
+    return {
+      rows: seatGridRows,
+      cols: seatGridCols,
+      seats: generateSeats(seatGridRows, seatGridCols),
+    };
+  };
+
   const handleSaveResource = async () => {
     if (!validateResourceForm()) {
       showNotificationMessage('Please fix the errors in the form', 'error');
@@ -493,13 +534,10 @@ const AdminResourceManagement = () => {
     setLoading(true);
     try {
       if (isEditing && selectedResource) {
-        const nextSeatingLayout = supportsSeatLayout(resourceForm.type)
-          ? resourceForm.seatingLayout || selectedResource.seatingLayout || {
-              rows: seatGridRows,
-              cols: seatGridCols,
-              seats: generateSeats(seatGridRows, seatGridCols),
-            }
-          : null;
+        const nextSeatingLayout = getLayoutForCurrentGrid({
+          ...selectedResource,
+          ...resourceForm,
+        });
         const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
@@ -516,8 +554,7 @@ const AdminResourceManagement = () => {
           throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to update resource');
         }
 
-        setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
-        setSelectedResource(savedResource);
+        syncSavedResource(savedResource, 'full');
         showNotificationMessage('Resource updated successfully!', 'success');
       } else {
         const newResource = normalizeResourcePayload({
@@ -531,11 +568,7 @@ const AdminResourceManagement = () => {
           amenities: resourceForm.amenities || [],
           availabilityWindows: resourceForm.availabilityWindows || [],
           ...(supportsSeatLayout(resourceForm.type) ? {
-            seatingLayout: {
-              rows: seatGridRows,
-              cols: seatGridCols,
-              seats: generateSeats(seatGridRows, seatGridCols),
-            }
+            seatingLayout: getLayoutForCurrentGrid(resourceForm),
           } : {}),
           ...(resourceForm.type === 'EQUIPMENT' ? {
             equipmentSpecs: {
@@ -613,8 +646,7 @@ const AdminResourceManagement = () => {
           throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to delete seat');
         }
 
-        setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
-        setSelectedResource(savedResource);
+        syncSavedResource(savedResource);
         showNotificationMessage('Seat deleted successfully', 'success');
       } catch (error) {
         showNotificationMessage(error.message || 'Failed to delete seat', 'error');
@@ -655,8 +687,7 @@ const AdminResourceManagement = () => {
         throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to save seat');
       }
 
-      setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
-      setSelectedResource(savedResource);
+      syncSavedResource(savedResource);
       setShowSeatModal(false);
       showNotificationMessage(seatForm.id ? 'Seat updated successfully' : 'Seat added successfully', 'success');
     } catch (error) {
@@ -702,9 +733,7 @@ const AdminResourceManagement = () => {
           throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to regenerate seats');
         }
 
-        setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
-        setSelectedResource(savedResource);
-        setResourceForm(savedResource);
+        syncSavedResource(savedResource);
         showNotificationMessage(`Generated ${newSeats.length} seats in ${seatGridRows}x${seatGridCols} layout`, 'success');
       } catch (error) {
         showNotificationMessage(error.message || 'Failed to regenerate seats', 'error');

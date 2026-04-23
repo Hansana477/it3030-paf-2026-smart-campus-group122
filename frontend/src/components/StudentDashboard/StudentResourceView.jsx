@@ -47,6 +47,7 @@ const AMENITY_ICONS = {
 };
 
 const API_BASE_URL = 'http://localhost:8082';
+const RESOURCE_REFRESH_INTERVAL_MS = 5000;
 
 const StudentResourceView = () => {
   const [resources, setResources] = useState([]);
@@ -68,8 +69,13 @@ const StudentResourceView = () => {
   const itemsPerPage = 6;
 
   useEffect(() => {
-    const loadResources = async () => {
-      setLoading(true);
+    let isMounted = true;
+
+    const syncResources = async (showInitialLoading = false) => {
+      if (showInitialLoading) {
+        setLoading(true);
+      }
+
       try {
         const response = await fetch(`${API_BASE_URL}/resources?status=ACTIVE`);
         const data = await response.json().catch(() => []);
@@ -78,16 +84,38 @@ const StudentResourceView = () => {
           throw new Error(data?.message || data?.error || 'Failed to load resources');
         }
 
-        setResources(Array.isArray(data) ? data : []);
+        if (!isMounted) return;
+
+        const nextResources = Array.isArray(data) ? data : [];
+        setResources(nextResources);
+        setSelectedResource(current => {
+          if (!current) return current;
+          return nextResources.find(resource => resource.id === current.id) || current;
+        });
       } catch (error) {
-        showNotificationMessage(error.message || 'Failed to load resources', 'error');
-        setResources([]);
+        if (!isMounted) return;
+        if (showInitialLoading) {
+          showNotificationMessage(error.message || 'Failed to load resources', 'error');
+          setResources([]);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted && showInitialLoading) {
+          setLoading(false);
+        }
       }
     };
 
-    loadResources();
+    syncResources(true);
+    const refreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncResources(false);
+      }
+    }, RESOURCE_REFRESH_INTERVAL_MS);
+
+    return () => {
+      isMounted = false;
+      clearInterval(refreshTimer);
+    };
   }, []);
 
   // Get unique amenities for filter
