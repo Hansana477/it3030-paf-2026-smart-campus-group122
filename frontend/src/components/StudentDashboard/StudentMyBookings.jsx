@@ -16,6 +16,7 @@ const StudentMyBookings = () => {
   const [reviewBooking, setReviewBooking] = useState(null);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [calendarDayModal, setCalendarDayModal] = useState(null);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -199,6 +200,14 @@ const StudentMyBookings = () => {
   const calendarTitle = calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const todayKey = toDateKey(new Date());
 
+  const openCalendarDay = (dateKey, dayBookings) => {
+    if (!dayBookings.length) return;
+    setCalendarDayModal({
+      date: dateKey,
+      bookings: dayBookings,
+    });
+  };
+
   const getQrPayload = (booking) => booking.qrPayload || [
     'SMART_CAMPUS_BOOKING',
     `bookingId=${booking.id}`,
@@ -319,11 +328,14 @@ const StudentMyBookings = () => {
               const isToday = dateKey === todayKey;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={dateKey}
+                  onClick={() => openCalendarDay(dateKey, dayBookings)}
+                  disabled={dayBookings.length === 0}
                   className={`min-h-[82px] rounded-lg border p-1.5 text-left ${
                     isCurrentMonth ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 text-slate-300'
-                  } ${isToday ? 'ring-2 ring-emerald-400' : ''}`}
+                  } ${isToday ? 'ring-2 ring-emerald-400' : ''} ${dayBookings.length > 0 ? 'cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/40' : 'cursor-default'}`}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${isCurrentMonth ? 'text-slate-800' : 'text-slate-300'}`}>
@@ -349,7 +361,7 @@ const StudentMyBookings = () => {
                       <p className="text-[10px] font-semibold text-slate-400">+{dayBookings.length - 1} more</p>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -444,6 +456,63 @@ const StudentMyBookings = () => {
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setRescheduleBooking(null)} className="rounded-xl px-4 py-2 text-slate-600 hover:bg-slate-100">Close</button>
               <button onClick={submitReschedule} className="rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-white hover:bg-emerald-600">Submit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {calendarDayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Calendar Bookings</p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                  {new Date(`${calendarDayModal.date}T00:00:00`).toLocaleDateString(undefined, {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </h2>
+              </div>
+              <button onClick={() => setCalendarDayModal(null)} className="rounded-xl px-3 py-2 text-slate-500 hover:bg-slate-100">
+                Close
+              </button>
+            </div>
+
+            <div className="mt-5 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+              {calendarDayModal.bookings.map(booking => (
+                <article key={booking.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-bold text-slate-900">{booking.resourceName}</h3>
+                      <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                        <MapPin className="h-4 w-4" />
+                        {booking.location}
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(booking.status)}`}>
+                      {booking.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                    <p className="inline-flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      {booking.startTime} - {booking.endTime}
+                    </p>
+                    <p>Seats: {booking.seatNumbers?.join(', ') || 'Resource booking'}</p>
+                    <p className="sm:col-span-2">Purpose: {booking.purpose}</p>
+                  </div>
+
+                  {booking.status === 'APPROVED' && (
+                    <p className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-700">
+                      <QrCode className="h-4 w-4" />
+                      Verification: {booking.verificationCode || 'Available'}
+                    </p>
+                  )}
+                </article>
+              ))}
             </div>
           </div>
         </div>

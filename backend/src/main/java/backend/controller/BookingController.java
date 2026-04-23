@@ -268,9 +268,14 @@ public class BookingController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Time range is required");
         }
         try {
-            LocalDate.parse(booking.getDate());
-            if (!LocalTime.parse(booking.getStartTime()).isBefore(LocalTime.parse(booking.getEndTime()))) {
+            LocalDate bookingDate = LocalDate.parse(booking.getDate());
+            LocalTime startTime = LocalTime.parse(booking.getStartTime());
+            LocalTime endTime = LocalTime.parse(booking.getEndTime());
+            if (!startTime.isBefore(endTime)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time");
+            }
+            if (!LocalDateTime.of(bookingDate, startTime).isAfter(LocalDateTime.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This time slot has already started");
             }
         } catch (ResponseStatusException exception) {
             throw exception;

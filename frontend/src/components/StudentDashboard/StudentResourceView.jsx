@@ -306,8 +306,8 @@ const StudentResourceView = () => {
   const isPastSlot = (date, slot) => {
     if (!date || !slot) return false;
     const now = new Date();
-    const slotEnd = new Date(`${date}T${slot.endTime}:00`);
-    return slotEnd <= now;
+    const slotStart = new Date(`${date}T${slot.startTime}:00`);
+    return slotStart <= now;
   };
   const getAvailabilityForDate = (resource, date) => {
     if (!resource || !date) return null;
@@ -464,6 +464,10 @@ const StudentResourceView = () => {
     }
     if (selectedSeatIds.some(seatId => isSlotBookedForSeat(seatId, selectedSlot))) {
       showNotificationMessage('Selected slot is no longer available for one or more seats', 'error');
+      return;
+    }
+    if (isPastSlot(bookingDate, selectedSlot)) {
+      showNotificationMessage('This time slot has already started. Please choose another slot', 'error');
       return;
     }
 
@@ -1109,7 +1113,7 @@ const StudentResourceView = () => {
                                 <span className="rounded bg-primary px-2 py-1 text-white">Selected</span>
                                 <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">Pending</span>
                                 <span className="rounded bg-red-100 px-2 py-1 text-red-700">Booked</span>
-                                <span className="rounded bg-slate-100 px-2 py-1 text-slate-400">Past</span>
+                                <span className="rounded bg-slate-100 px-2 py-1 text-slate-400">Started/Past</span>
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap gap-2">
@@ -1124,7 +1128,7 @@ const StudentResourceView = () => {
                                     type="button"
                                     disabled={blocked}
                                     onClick={() => setSelectedSlot(slot)}
-                                    title={past ? 'This time slot has already passed' : undefined}
+                                    title={past ? 'This time slot has already started' : undefined}
                                     className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-100 ${getSlotStateClasses(slotStatus, selected, past)}`}
                                   >
                                     {slot.startTime} - {slot.endTime}
