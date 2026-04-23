@@ -87,6 +87,12 @@ public class ResourceController {
         if (resource.getType() != null && "EQUIPMENT".equalsIgnoreCase(resource.getType())) {
             resource.setCapacity(1);
             resource.setSeatingLayout(null);
+            return;
+        }
+
+        if (resource.getSeatingLayout() != null && resource.getSeatingLayout().getSeats() != null
+                && !resource.getSeatingLayout().getSeats().isEmpty()) {
+            resource.setCapacity(resource.getSeatingLayout().getSeats().size());
         }
     }
 

@@ -207,6 +207,7 @@ const LOCATIONS = [
 ];
 
 const API_BASE_URL = 'http://localhost:8082';
+const SEAT_LAYOUT_RESOURCE_TYPES = ['LECTURE_HALL', 'LAB', 'MEETING_ROOM', 'STUDY_AREA'];
 
 // ==============================================
 // MAIN COMPONENT
@@ -369,9 +370,17 @@ const AdminResourceManagement = () => {
     setTimeout(() => setShowNotification(false), 3000);
   };
 
+  const supportsSeatLayout = (type) => SEAT_LAYOUT_RESOURCE_TYPES.includes(type);
+
+  const getSeatLayoutCapacity = (resource) => {
+    if (!supportsSeatLayout(resource.type)) return resource.type === 'EQUIPMENT' ? 1 : 0;
+    if (resource.seatingLayout?.seats?.length) return resource.seatingLayout.seats.length;
+    return seatGridRows * seatGridCols;
+  };
+
   const normalizeResourcePayload = (resource) => ({
     ...resource,
-    capacity: resource.type === 'EQUIPMENT' ? 1 : resource.capacity,
+    capacity: getSeatLayoutCapacity(resource),
     seatingLayout: resource.type === 'EQUIPMENT' ? null : resource.seatingLayout,
   });
 
@@ -391,7 +400,7 @@ const AdminResourceManagement = () => {
       name: '',
       type: 'LECTURE_HALL',
       location: '',
-      capacity: 0,
+      capacity: seatGridRows * seatGridCols,
       status: 'ACTIVE',
       description: '',
       images: [],
@@ -401,6 +410,8 @@ const AdminResourceManagement = () => {
     setIsEditing(false);
     setFormErrors({});
     setActiveTab('details');
+    setSeatGridRows(4);
+    setSeatGridCols(4);
     setShowResourceModal(true);
   };
 
@@ -413,6 +424,9 @@ const AdminResourceManagement = () => {
     if (resource.seatingLayout) {
       setSeatGridRows(resource.seatingLayout.rows);
       setSeatGridCols(resource.seatingLayout.cols);
+    } else {
+      setSeatGridRows(4);
+      setSeatGridCols(4);
     }
     setShowResourceModal(true);
   };
@@ -443,7 +457,7 @@ const AdminResourceManagement = () => {
     if (!resourceForm.name?.trim()) errors.name = 'Resource name is required';
     if (resourceForm.name && resourceForm.name.length < 2) errors.name = 'Name must be at least 2 characters';
     if (!resourceForm.location) errors.location = 'Location is required';
-    if (resourceForm.type !== 'EQUIPMENT' && (!resourceForm.capacity || resourceForm.capacity < 1)) errors.capacity = 'Capacity must be at least 1';
+    if (supportsSeatLayout(resourceForm.type) && seatGridRows * seatGridCols < 1) errors.seatingLayout = 'Seat layout must contain at least 1 seat';
     if (!resourceForm.description?.trim()) errors.description = 'Description is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -479,6 +493,13 @@ const AdminResourceManagement = () => {
     setLoading(true);
     try {
       if (isEditing && selectedResource) {
+        const nextSeatingLayout = supportsSeatLayout(resourceForm.type)
+          ? resourceForm.seatingLayout || selectedResource.seatingLayout || {
+              rows: seatGridRows,
+              cols: seatGridCols,
+              seats: generateSeats(seatGridRows, seatGridCols),
+            }
+          : null;
         const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
@@ -486,6 +507,7 @@ const AdminResourceManagement = () => {
             ...selectedResource,
             ...resourceForm,
             id: selectedResource.id,
+            seatingLayout: nextSeatingLayout,
           })),
         });
         const savedResource = await response.json().catch(() => null);
@@ -508,7 +530,7 @@ const AdminResourceManagement = () => {
           images: resourceForm.images || [],
           amenities: resourceForm.amenities || [],
           availabilityWindows: resourceForm.availabilityWindows || [],
-          ...((resourceForm.type === 'LECTURE_HALL' || resourceForm.type === 'STUDY_AREA' || resourceForm.type === 'LAB') ? {
+          ...(supportsSeatLayout(resourceForm.type) ? {
             seatingLayout: {
               rows: seatGridRows,
               cols: seatGridCols,
@@ -573,6 +595,7 @@ const AdminResourceManagement = () => {
       const updatedSeats = selectedResource.seatingLayout.seats.filter(s => s.id !== seatId);
       const updatedResource = {
         ...selectedResource,
+        capacity: updatedSeats.length,
         seatingLayout: {
           ...selectedResource.seatingLayout,
           seats: updatedSeats,
@@ -613,6 +636,7 @@ const AdminResourceManagement = () => {
     
     const updatedResource = {
       ...selectedResource,
+      capacity: updatedSeats.length,
       seatingLayout: {
         ...selectedResource.seatingLayout,
         seats: updatedSeats,
@@ -641,11 +665,25 @@ const AdminResourceManagement = () => {
   };
 
   const handleRegenerateSeats = async () => {
-    if (!selectedResource) return;
+    if (!selectedResource) {
+      const newSeats = generateSeats(seatGridRows, seatGridCols);
+      setResourceForm(prev => ({
+        ...prev,
+        capacity: newSeats.length,
+        seatingLayout: {
+          rows: seatGridRows,
+          cols: seatGridCols,
+          seats: newSeats,
+        },
+      }));
+      showNotificationMessage(`Prepared ${newSeats.length} seats in ${seatGridRows}x${seatGridCols} layout`, 'success');
+      return;
+    }
     if (window.confirm('This will replace all existing seats with a new grid. Continue?')) {
       const newSeats = generateSeats(seatGridRows, seatGridCols);
       const updatedResource = {
         ...selectedResource,
+        capacity: newSeats.length,
         seatingLayout: {
           rows: seatGridRows,
           cols: seatGridCols,
@@ -1012,7 +1050,7 @@ const AdminResourceManagement = () => {
                           setResourceForm({
                             ...resourceForm,
                             type: nextType,
-                            capacity: nextType === 'EQUIPMENT' ? 1 : resourceForm.capacity,
+                            capacity: nextType === 'EQUIPMENT' ? 1 : seatGridRows * seatGridCols,
                             seatingLayout: nextType === 'EQUIPMENT' ? null : resourceForm.seatingLayout,
                           });
                         }}
@@ -1043,17 +1081,12 @@ const AdminResourceManagement = () => {
                     
                     {resourceForm.type !== 'EQUIPMENT' && (
                       <div>
-                        <label className="text-sm font-medium text-slate-700 mb-1 block">Capacity *</label>
-                        <input
-                          type="number"
-                          value={resourceForm.capacity || ''}
-                          onChange={(e) => setResourceForm({ ...resourceForm, capacity: parseInt(e.target.value) || 0 })}
-                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                            formErrors.capacity ? 'border-red-500 bg-red-50' : 'border-slate-200'
-                          }`}
-                          min="1"
-                        />
-                        {formErrors.capacity && <p className="text-xs text-red-500 mt-1">{formErrors.capacity}</p>}
+                        <label className="text-sm font-medium text-slate-700 mb-1 block">Capacity</label>
+                        <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 font-semibold text-slate-700">
+                          {getSeatLayoutCapacity(resourceForm)} seats
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">Capacity is calculated from the seat layout.</p>
+                        {formErrors.seatingLayout && <p className="text-xs text-red-500 mt-1">{formErrors.seatingLayout}</p>}
                       </div>
                     )}
                     
@@ -1164,7 +1197,7 @@ const AdminResourceManagement = () => {
               
               {activeTab === 'seats' && (
                 <div className="space-y-5">
-                  {(resourceForm.type === 'LECTURE_HALL' || resourceForm.type === 'STUDY_AREA' || resourceForm.type === 'LAB') ? (
+                  {supportsSeatLayout(resourceForm.type) ? (
                     <>
                       <div className="flex gap-4 items-end">
                         <div>
@@ -1196,6 +1229,11 @@ const AdminResourceManagement = () => {
                           <RefreshCw className="w-4 h-4" />
                           Generate {seatGridRows * seatGridCols} Seats
                         </button>
+                        {!isEditing && (
+                          <p className="pb-2 text-sm text-slate-500">
+                            These seats will be created when you save the resource.
+                          </p>
+                        )}
                       </div>
                       
                       {selectedResource?.seatingLayout && (
@@ -1256,7 +1294,7 @@ const AdminResourceManagement = () => {
                   ) : (
                     <div className="text-center py-12 text-slate-400">
                       <Armchair className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>Seat layout is only available for Lecture Halls, Labs, and Study Areas</p>
+                      <p>Seat layout is only available for Lecture Halls, Labs, Meeting Rooms, and Study Areas</p>
                     </div>
                   )}
                 </div>
