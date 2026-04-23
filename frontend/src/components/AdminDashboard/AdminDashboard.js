@@ -4,8 +4,53 @@ import Header from "../Header/Header";
 
 const adminInputClasses =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
-const phonePattern = /^\d{10}$/;
-const phoneHelpText = "Phone number must contain exactly 10 digits.";
+const phonePattern = /^\d{9}$/;
+const phoneHelpText = "Phone number must contain 9 digits after +94.";
+
+function formatPhoneForInput(phone) {
+  if (!phone) {
+    return "";
+  }
+
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10 && digits.startsWith("0")) {
+    return digits.slice(1);
+  }
+
+  if (digits.length === 11 && digits.startsWith("94")) {
+    return digits.slice(2);
+  }
+
+  return digits.slice(0, 9);
+}
+
+function normalizePhoneInput(value) {
+  const digits = value.replace(/\D/g, "");
+
+  if (digits.startsWith("94")) {
+    return digits.slice(2, 11);
+  }
+
+  if (digits.startsWith("0")) {
+    return digits.slice(1, 10);
+  }
+
+  return digits.slice(0, 9);
+}
+
+function toStoredPhone(phone) {
+  if (!phone) {
+    return "";
+  }
+
+  return `0${phone}`;
+}
+
+const roleFilterOptions = [
+  { value: "ALL", label: "All users" },
+  { value: "STUDENT", label: "Students" },
+  { value: "TECHNICIAN", label: "Technicians" },
+];
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -24,6 +69,7 @@ function AdminDashboard() {
   const [editSuccess, setEditSuccess] = useState("");
   const [isSavingUser, setIsSavingUser] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState("ALL");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -48,12 +94,12 @@ function AdminDashboard() {
 
       try {
         const [usersResponse, pendingResponse] = await Promise.all([
-          fetch("http://localhost:8080/users", {
+          fetch("http://localhost:8082/users", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetch("http://localhost:8080/users/pending-technicians", {
+          fetch("http://localhost:8082/users/pending-technicians", {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -95,7 +141,7 @@ function AdminDashboard() {
     setError("");
 
     try {
-      const response = await fetch(`http://localhost:8080/users/${userId}/approve`, {
+      const response = await fetch(`http://localhost:8082/users/${userId}/approve`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -131,7 +177,7 @@ function AdminDashboard() {
     setEditForm({
       fullName: listedUser.fullName ?? "",
       email: listedUser.email ?? "",
-      phone: listedUser.phone ?? "",
+      phone: formatPhoneForInput(listedUser.phone ?? ""),
       role: listedUser.role ?? "STUDENT",
       active: Boolean(listedUser.active),
       approved: Boolean(listedUser.approved),
@@ -155,7 +201,7 @@ function AdminDashboard() {
         [name]: type === "checkbox"
           ? checked
           : name === "phone"
-            ? value.replace(/\D/g, "").slice(0, 10)
+            ? normalizePhoneInput(value)
             : value,
       };
 
@@ -185,7 +231,7 @@ function AdminDashboard() {
         throw new Error(phoneHelpText);
       }
 
-      const response = await fetch(`http://localhost:8080/users/${editingUser.id}`, {
+      const response = await fetch(`http://localhost:8082/users/${editingUser.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +240,7 @@ function AdminDashboard() {
         body: JSON.stringify({
           fullName: editForm.fullName.trim(),
           email: editForm.email.trim(),
-          phone: trimmedPhone,
+          phone: toStoredPhone(trimmedPhone),
           role: editForm.role,
           active: editForm.active,
           approved: editForm.role === "TECHNICIAN" ? editForm.approved : true,
@@ -257,7 +303,7 @@ function AdminDashboard() {
     setError("");
 
     try {
-      const response = await fetch(`http://localhost:8080/users/${listedUser.id}`, {
+      const response = await fetch(`http://localhost:8082/users/${listedUser.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -287,11 +333,57 @@ function AdminDashboard() {
     }
   };
 
+  const handleDownloadReport = () => {
+    const reportRows = filteredUsers.map((listedUser) => ({
+      Name: listedUser.fullName ?? "",
+      Email: listedUser.email ?? "",
+      Role: listedUser.role ?? "",
+      Phone: listedUser.phone ?? "",
+      Status: listedUser.active ? "Active" : "Inactive",
+      Approval: listedUser.approved ? "Approved" : "Pending",
+      "Created At": listedUser.createdAt ?? "",
+      "Last Login": listedUser.lastLogin ?? "",
+    }));
+
+    if (!reportRows.length) {
+      setError("There are no users in the selected filter to download.");
+      return;
+    }
+
+    const headers = Object.keys(reportRows[0]);
+    const csvContent = [
+      headers.join(","),
+      ...reportRows.map((row) =>
+        headers
+          .map((header) => `"${String(row[header] ?? "").replace(/"/g, "\"\"")}"`)
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const reportLabel = selectedRoleFilter === "ALL"
+      ? "all-users"
+      : `${selectedRoleFilter.toLowerCase()}-report`;
+
+    link.href = downloadUrl;
+    link.setAttribute("download", `${reportLabel}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+  };
+
   const totalUsers = allUsers.length;
   const studentCount = allUsers.filter((existingUser) => existingUser.role === "STUDENT").length;
   const technicianCount = allUsers.filter((existingUser) => existingUser.role === "TECHNICIAN").length;
   const adminCount = allUsers.filter((existingUser) => existingUser.role === "ADMIN").length;
   const activeUserCount = allUsers.filter((existingUser) => existingUser.active).length;
+  const filteredUsers = allUsers.filter((existingUser) =>
+    selectedRoleFilter === "ALL" ? true : existingUser.role === selectedRoleFilter
+  );
+  const selectedFilterLabel = roleFilterOptions.find((option) => option.value === selectedRoleFilter)?.label ?? "All users";
 
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
@@ -405,6 +497,13 @@ function AdminDashboard() {
                   {pendingTechnicians.length} technician account(s) are still waiting for admin approval.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => navigate("/admin-resource-management")}
+                className="inline-flex items-center justify-center rounded-2xl bg-secondary px-5 py-3.5 text-sm font-semibold text-primary transition hover:bg-emerald-300"
+              >
+                Manage Catalogue
+              </button>
             </div>
           </article>
         </section>
@@ -415,14 +514,44 @@ function AdminDashboard() {
               <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">User Directory</p>
               <h2 className="mt-3 text-3xl font-extrabold text-primary">All registered users</h2>
               <p className="mt-2 text-base leading-7 text-slate-500">
-                View the full system user list with role, status, approval state, and contact details.
+                Filter students and technicians quickly, then download the relevant report as a CSV file.
               </p>
             </div>
-            <div className="rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-sm text-slate-500">
-              Total records:
-              {" "}
-              <span className="font-semibold text-primary">{totalUsers}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-sm text-slate-500">
+                Showing:
+                {" "}
+                <span className="font-semibold text-primary">{filteredUsers.length}</span>
+              </div>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                onClick={handleDownloadReport}
+              >
+                Download {selectedFilterLabel} report
+              </button>
             </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            {roleFilterOptions.map((option) => {
+              const isActive = option.value === selectedRoleFilter;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    isActive
+                      ? "bg-primary text-white shadow-[0_12px_24px_rgba(15,23,42,0.14)]"
+                      : "border border-slate-200 bg-white text-primary hover:border-accent"
+                  }`}
+                  onClick={() => setSelectedRoleFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-6 overflow-x-auto rounded-[24px] border border-slate-200">
@@ -439,7 +568,7 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
-                {allUsers.map((listedUser) => (
+                {filteredUsers.map((listedUser) => (
                   <tr key={listedUser.id} className="align-top">
                     <td className="px-4 py-4">
                       <div className="font-semibold text-primary">{listedUser.fullName}</div>
@@ -498,9 +627,9 @@ function AdminDashboard() {
             </table>
           </div>
 
-          {!isLoading && !allUsers.length ? (
+          {!isLoading && !filteredUsers.length ? (
             <p className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-              No users found in the system yet.
+              No users found for the selected filter.
             </p>
           ) : null}
         </section>
@@ -563,16 +692,22 @@ function AdminDashboard() {
                 <div className="grid gap-5 md:grid-cols-2">
                   <label className="grid gap-2">
                     <span className="text-sm font-semibold text-primary">Phone</span>
-                    <input
-                      type="text"
-                      name="phone"
-                      value={editForm.phone}
-                      onChange={handleEditFormChange}
-                      inputMode="numeric"
-                      maxLength="10"
-                      pattern={phonePattern.source}
-                      className={adminInputClasses}
-                    />
+                    <div className="flex overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 transition focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/10">
+                      <span className="inline-flex items-center border-r border-slate-200 px-4 py-3 text-base font-semibold text-slate-500">
+                        +94
+                      </span>
+                      <input
+                        type="text"
+                        name="phone"
+                        value={editForm.phone}
+                        onChange={handleEditFormChange}
+                        inputMode="numeric"
+                        maxLength="9"
+                        pattern={phonePattern.source}
+                        placeholder="7XXXXXXXX"
+                        className="w-full bg-transparent px-4 py-3 text-base text-primary outline-none"
+                      />
+                    </div>
                     <p className="text-sm leading-6 text-slate-500">{phoneHelpText}</p>
                   </label>
 

@@ -118,7 +118,7 @@ public class EmailNotificationService {
     private void sendEmail(String to, String subject, String body) {
         if (!StringUtils.hasText(mailHost)) {
             logger.info("Skipping email to {} because SMTP host is not configured.", to);
-            return;
+            return false;
         }
 
         try {
@@ -129,8 +129,10 @@ public class EmailNotificationService {
             helper.setSubject(subject);
             helper.setText(body, false);
             mailSender.send(message);
+            return true;
         } catch (Exception ex) {
             logger.warn("Failed to send email to {}: {}", to, ex.getMessage());
+            return false;
         }
     }
 

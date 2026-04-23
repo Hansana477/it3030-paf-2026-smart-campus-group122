@@ -1,11 +1,9 @@
 package backend.exception;
 
 public class UserNotFoundException extends RuntimeException {
-    public UserNotFoundException(Long id){
-        super("Could not find id" + id);
-    }
-
     public UserNotFoundException(String message){
-        super(message);
+        super(message != null && message.startsWith("Could not find")
+                ? message
+                : "Could not find id " + message);
     }
 }

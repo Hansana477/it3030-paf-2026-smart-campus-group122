@@ -2,52 +2,51 @@ package backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 public class UserModel {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    @Column(name = "email", unique = true, nullable = false)
+    @Indexed(unique = true)
     private String email;
 
-    @Column(name = "password", nullable = false)
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
-    @Column(name = "role", nullable = false)
     private String role; // STUDENT, TECHNICIAN
 
-    @Column(name = "phone")
     private String phone;
 
-    @Column(name = "is_active")
-    private boolean isActive = true;
+    private Boolean active = Boolean.TRUE;
 
-    @Column(name = "is_approved")
     private Boolean approved = Boolean.TRUE;
 
-    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
     @JsonIgnore
-    @Column(name = "password_reset_code")
     private String passwordResetCode;
 
     @JsonIgnore
-    @Column(name = "password_reset_expiry")
     private LocalDateTime passwordResetExpiry;
+
+    @JsonIgnore
+    @org.springframework.data.mongodb.core.mapping.Field(name = "login_otp_code")
+    private String loginOtpCode;
+
+    @JsonIgnore
+    @org.springframework.data.mongodb.core.mapping.Field(name = "login_otp_expiry")
+    private LocalDateTime loginOtpExpiry;
 
     public UserModel() {
         this.createdAt = LocalDateTime.now();
@@ -59,14 +58,12 @@ public class UserModel {
         this.password = password;
         this.role = role;
         this.phone = phone;
-        this.isActive = true;
+        this.active = Boolean.TRUE;
         this.approved = Boolean.TRUE;
         this.createdAt = LocalDateTime.now();
     }
 
-    @PrePersist
-    @PreUpdate
-    private void applyDefaults() {
+    public void applyDefaults() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
@@ -76,16 +73,9 @@ public class UserModel {
         }
     }
 
-    @PostLoad
-    private void applyLegacyDefaults() {
-        if (approved == null) {
-            approved = Boolean.TRUE;
-        }
-    }
-
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
@@ -102,8 +92,10 @@ public class UserModel {
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
-    public boolean isActive() { return isActive; }
-    public void setActive(boolean active) { isActive = active; }
+    public boolean isActive() { return active == null || active; }
+    public Boolean getActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public void setActive(Boolean active) { this.active = active; }
 
     public boolean isApproved() { return approved == null || approved; }
     public Boolean getApproved() { return approved; }
@@ -122,4 +114,10 @@ public class UserModel {
 
     public LocalDateTime getPasswordResetExpiry() { return passwordResetExpiry; }
     public void setPasswordResetExpiry(LocalDateTime passwordResetExpiry) { this.passwordResetExpiry = passwordResetExpiry; }
+
+    public String getLoginOtpCode() { return loginOtpCode; }
+    public void setLoginOtpCode(String loginOtpCode) { this.loginOtpCode = loginOtpCode; }
+
+    public LocalDateTime getLoginOtpExpiry() { return loginOtpExpiry; }
+    public void setLoginOtpExpiry(LocalDateTime loginOtpExpiry) { this.loginOtpExpiry = loginOtpExpiry; }
 }

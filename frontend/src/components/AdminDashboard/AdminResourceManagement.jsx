@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   MapPin, 
   School,
@@ -177,7 +177,7 @@ const DUMMY_RESOURCES = [
     name: 'Group Study Room 204',
     type: 'STUDY_AREA',
     location: 'Library, Floor 2',
-    capacity: 8,
+    capacity: 10,
     status: 'MAINTENANCE',
     description: 'Collaborative study room with whiteboard',
     amenities: ['Whiteboard', 'Power Outlets', 'Table', 'Chairs'],
@@ -206,11 +206,14 @@ const LOCATIONS = [
   'Student Center', 'Lab Complex', 'AV Room'
 ];
 
+const API_BASE_URL = 'http://localhost:8082';
+
 // ==============================================
 // MAIN COMPONENT
 // ==============================================
 const AdminResourceManagement = () => {
-  const [resources, setResources] = useState(DUMMY_RESOURCES);
+  const token = localStorage.getItem('token');
+  const [resources, setResources] = useState(() => DUMMY_RESOURCES.slice(0, 0));
   const [selectedResource, setSelectedResource] = useState(null);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showSeatModal, setShowSeatModal] = useState(false);
@@ -233,9 +236,10 @@ const AdminResourceManagement = () => {
     capacity: 0,
     status: 'ACTIVE',
     description: '',
+    images: [],
     amenities: [],
     availabilityWindows: [
-      { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }
+      { dayOfWeek: 1, date: '', startTime: '09:00', endTime: '17:00' }
     ],
   });
   
@@ -255,6 +259,108 @@ const AdminResourceManagement = () => {
   const [seatGridRows, setSeatGridRows] = useState(4);
   const [seatGridCols, setSeatGridCols] = useState(4);
 
+  const getAuthHeaders = () => ({
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  });
+
+  const loadResources = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/resources`);
+      const data = await response.json().catch(() => []);
+
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Failed to load resources');
+      }
+
+      setResources(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to load resources', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadResources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const uploadResourceImages = async (files) => {
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
+
+    if (!token) {
+      showNotificationMessage('Missing login token. Please log in again.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const uploadedUrls = [];
+
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch(`${API_BASE_URL}/resources/images`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || data?.error || data?.['error Message'] || `Failed to upload ${file.name}`);
+        }
+
+        if (data?.url) {
+          uploadedUrls.push(data.url);
+        }
+      }
+
+      const nextImages = [...(resourceForm.images || []), ...uploadedUrls];
+
+      if (isEditing && selectedResource) {
+        const updatedResource = normalizeResourcePayload({
+          ...selectedResource,
+          ...resourceForm,
+          id: selectedResource.id,
+          images: nextImages,
+        });
+
+        const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(updatedResource),
+        });
+        const savedResource = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to save uploaded images');
+        }
+
+        setResourceForm(savedResource);
+        setSelectedResource(savedResource);
+        setResources(prev => prev.map(resource => resource.id === savedResource.id ? savedResource : resource));
+      } else {
+        setResourceForm(prev => ({
+          ...prev,
+          images: nextImages,
+        }));
+      }
+
+      showNotificationMessage(`${uploadedUrls.length} image${uploadedUrls.length !== 1 ? 's' : ''} uploaded`, 'success');
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to upload image', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Show notification helper
   const showNotificationMessage = (message, type = 'success') => {
     setNotificationMessage(message);
@@ -262,6 +368,12 @@ const AdminResourceManagement = () => {
     setShowNotification(true);
     setTimeout(() => setShowNotification(false), 3000);
   };
+
+  const normalizeResourcePayload = (resource) => ({
+    ...resource,
+    capacity: resource.type === 'EQUIPMENT' ? 1 : resource.capacity,
+    seatingLayout: resource.type === 'EQUIPMENT' ? null : resource.seatingLayout,
+  });
 
   // Filter resources
   const filteredResources = resources.filter(resource => {
@@ -272,6 +384,7 @@ const AdminResourceManagement = () => {
     return matchesSearch && matchesType && matchesStatus;
   });
 
+
   // Resource CRUD
   const handleAddResource = () => {
     setResourceForm({
@@ -281,8 +394,9 @@ const AdminResourceManagement = () => {
       capacity: 0,
       status: 'ACTIVE',
       description: '',
+      images: [],
       amenities: [],
-      availabilityWindows: [{ dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }],
+      availabilityWindows: [{ dayOfWeek: 1, date: '', startTime: '09:00', endTime: '17:00' }],
     });
     setIsEditing(false);
     setFormErrors({});
@@ -303,10 +417,24 @@ const AdminResourceManagement = () => {
     setShowResourceModal(true);
   };
 
-  const handleDeleteResource = (resourceId) => {
+  const handleDeleteResource = async (resourceId) => {
     if (window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) {
-      setResources(prev => prev.filter(r => r.id !== resourceId));
-      showNotificationMessage('Resource deleted successfully!', 'success');
+      try {
+        const response = await fetch(`${API_BASE_URL}/resources/${resourceId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || data?.error || data?.['error Message'] || 'Failed to delete resource');
+        }
+
+        setResources(prev => prev.filter(r => r.id !== resourceId));
+        showNotificationMessage('Resource deleted successfully!', 'success');
+      } catch (error) {
+        showNotificationMessage(error.message || 'Failed to delete resource', 'error');
+      }
     }
   };
 
@@ -315,7 +443,7 @@ const AdminResourceManagement = () => {
     if (!resourceForm.name?.trim()) errors.name = 'Resource name is required';
     if (resourceForm.name && resourceForm.name.length < 2) errors.name = 'Name must be at least 2 characters';
     if (!resourceForm.location) errors.location = 'Location is required';
-    if (!resourceForm.capacity || resourceForm.capacity < 1) errors.capacity = 'Capacity must be at least 1';
+    if (resourceForm.type !== 'EQUIPMENT' && (!resourceForm.capacity || resourceForm.capacity < 1)) errors.capacity = 'Capacity must be at least 1';
     if (!resourceForm.description?.trim()) errors.description = 'Description is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -342,28 +470,42 @@ const AdminResourceManagement = () => {
     return seats;
   };
 
-  const handleSaveResource = () => {
+  const handleSaveResource = async () => {
     if (!validateResourceForm()) {
       showNotificationMessage('Please fix the errors in the form', 'error');
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
+    try {
       if (isEditing && selectedResource) {
-        setResources(prev => prev.map(r => 
-          r.id === selectedResource.id ? { ...r, ...resourceForm, id: r.id } : r
-        ));
+        const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(normalizeResourcePayload({
+            ...selectedResource,
+            ...resourceForm,
+            id: selectedResource.id,
+          })),
+        });
+        const savedResource = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to update resource');
+        }
+
+        setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
+        setSelectedResource(savedResource);
         showNotificationMessage('Resource updated successfully!', 'success');
       } else {
-        const newResource = {
-          id: Date.now().toString(),
+        const newResource = normalizeResourcePayload({
           name: resourceForm.name,
           type: resourceForm.type,
           location: resourceForm.location,
           capacity: resourceForm.capacity,
           status: resourceForm.status,
           description: resourceForm.description,
+          images: resourceForm.images || [],
           amenities: resourceForm.amenities || [],
           availabilityWindows: resourceForm.availabilityWindows || [],
           ...((resourceForm.type === 'LECTURE_HALL' || resourceForm.type === 'STUDY_AREA' || resourceForm.type === 'LAB') ? {
@@ -381,13 +523,27 @@ const AdminResourceManagement = () => {
               warrantyExpiry: '',
             }
           } : {}),
-        };
-        setResources(prev => [...prev, newResource]);
+        });
+        const response = await fetch(`${API_BASE_URL}/resources`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(newResource),
+        });
+        const savedResource = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to create resource');
+        }
+
+        setResources(prev => [...prev, savedResource]);
         showNotificationMessage('Resource created successfully!', 'success');
       }
       setShowResourceModal(false);
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to save resource', 'error');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   // Seat management
@@ -411,7 +567,7 @@ const AdminResourceManagement = () => {
     setShowSeatModal(true);
   };
 
-  const handleDeleteSeat = (seatId) => {
+  const handleDeleteSeat = async (seatId) => {
     if (!selectedResource || !selectedResource.seatingLayout) return;
     if (window.confirm('Delete this seat?')) {
       const updatedSeats = selectedResource.seatingLayout.seats.filter(s => s.id !== seatId);
@@ -422,13 +578,28 @@ const AdminResourceManagement = () => {
           seats: updatedSeats,
         },
       };
-      setResources(prev => prev.map(r => r.id === selectedResource.id ? updatedResource : r));
-      setSelectedResource(updatedResource);
-      showNotificationMessage('Seat deleted successfully', 'success');
+      try {
+        const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(updatedResource),
+        });
+        const savedResource = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to delete seat');
+        }
+
+        setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
+        setSelectedResource(savedResource);
+        showNotificationMessage('Seat deleted successfully', 'success');
+      } catch (error) {
+        showNotificationMessage(error.message || 'Failed to delete seat', 'error');
+      }
     }
   };
 
-  const handleSaveSeat = () => {
+  const handleSaveSeat = async () => {
     if (!selectedResource || !selectedResource.seatingLayout) return;
     
     if (!seatForm.number?.trim()) {
@@ -447,14 +618,29 @@ const AdminResourceManagement = () => {
         seats: updatedSeats,
       },
     };
-    
-    setResources(prev => prev.map(r => r.id === selectedResource.id ? updatedResource : r));
-    setSelectedResource(updatedResource);
-    setShowSeatModal(false);
-    showNotificationMessage(seatForm.id ? 'Seat updated successfully' : 'Seat added successfully', 'success');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updatedResource),
+      });
+      const savedResource = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to save seat');
+      }
+
+      setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
+      setSelectedResource(savedResource);
+      setShowSeatModal(false);
+      showNotificationMessage(seatForm.id ? 'Seat updated successfully' : 'Seat added successfully', 'success');
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to save seat', 'error');
+    }
   };
 
-  const handleRegenerateSeats = () => {
+  const handleRegenerateSeats = async () => {
     if (!selectedResource) return;
     if (window.confirm('This will replace all existing seats with a new grid. Continue?')) {
       const newSeats = generateSeats(seatGridRows, seatGridCols);
@@ -466,9 +652,25 @@ const AdminResourceManagement = () => {
           seats: newSeats,
         },
       };
-      setResources(prev => prev.map(r => r.id === selectedResource.id ? updatedResource : r));
-      setSelectedResource(updatedResource);
-      showNotificationMessage(`Generated ${newSeats.length} seats in ${seatGridRows}x${seatGridCols} layout`, 'success');
+      try {
+        const response = await fetch(`${API_BASE_URL}/resources/${selectedResource.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(updatedResource),
+        });
+        const savedResource = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(savedResource?.message || savedResource?.error || savedResource?.['error Message'] || 'Failed to regenerate seats');
+        }
+
+        setResources(prev => prev.map(r => r.id === selectedResource.id ? savedResource : r));
+        setSelectedResource(savedResource);
+        setResourceForm(savedResource);
+        showNotificationMessage(`Generated ${newSeats.length} seats in ${seatGridRows}x${seatGridCols} layout`, 'success');
+      } catch (error) {
+        showNotificationMessage(error.message || 'Failed to regenerate seats', 'error');
+      }
     }
   };
 
@@ -476,7 +678,7 @@ const AdminResourceManagement = () => {
   const addAvailabilityWindow = () => {
     setResourceForm(prev => ({
       ...prev,
-      availabilityWindows: [...(prev.availabilityWindows || []), { dayOfWeek: 1, startTime: '09:00', endTime: '17:00' }]
+      availabilityWindows: [...(prev.availabilityWindows || []), { dayOfWeek: 1, date: '', startTime: '09:00', endTime: '17:00' }]
     }));
   };
 
@@ -681,6 +883,7 @@ const AdminResourceManagement = () => {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
+                  <th className="text-left p-4 font-medium text-slate-600">Image</th>
                   <th className="text-left p-4 font-medium text-slate-600">Name</th>
                   <th className="text-left p-4 font-medium text-slate-600">Type</th>
                   <th className="text-left p-4 font-medium text-slate-600">Location</th>
@@ -692,6 +895,22 @@ const AdminResourceManagement = () => {
               <tbody>
                 {filteredResources.map((resource) => (
                   <tr key={resource.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-4">
+                      {resource.images?.[0] ? (
+                        <div className="relative h-14 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                          <img src={resource.images[0]} alt={resource.name} className="h-full w-full object-cover" />
+                          {resource.images.length > 1 && (
+                            <span className="absolute bottom-1 right-1 rounded bg-slate-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                              +{resource.images.length - 1}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex h-14 w-20 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-400">
+                          {getResourceTypeIcon(resource.type)}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-4 font-medium text-slate-800">{resource.name}</td>
                     <td className="p-4">
                       <span className="flex items-center gap-1 text-sm">
@@ -700,7 +919,7 @@ const AdminResourceManagement = () => {
                       </span>
                     </td>
                     <td className="p-4 text-slate-600">{resource.location}</td>
-                    <td className="p-4 text-center">{resource.capacity}</td>
+                    <td className="p-4 text-center">{resource.type === 'EQUIPMENT' ? 'Single item' : resource.capacity}</td>
                     <td className="p-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(resource.status)}`}>
                         {resource.status}
@@ -788,7 +1007,15 @@ const AdminResourceManagement = () => {
                       <label className="text-sm font-medium text-slate-700 mb-1 block">Resource Type *</label>
                       <select
                         value={resourceForm.type}
-                        onChange={(e) => setResourceForm({ ...resourceForm, type: e.target.value })}
+                        onChange={(e) => {
+                          const nextType = e.target.value;
+                          setResourceForm({
+                            ...resourceForm,
+                            type: nextType,
+                            capacity: nextType === 'EQUIPMENT' ? 1 : resourceForm.capacity,
+                            seatingLayout: nextType === 'EQUIPMENT' ? null : resourceForm.seatingLayout,
+                          });
+                        }}
                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
                         <option value="LECTURE_HALL">Lecture Hall</option>
@@ -814,19 +1041,21 @@ const AdminResourceManagement = () => {
                       {formErrors.location && <p className="text-xs text-red-500 mt-1">{formErrors.location}</p>}
                     </div>
                     
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 mb-1 block">Capacity *</label>
-                      <input
-                        type="number"
-                        value={resourceForm.capacity || ''}
-                        onChange={(e) => setResourceForm({ ...resourceForm, capacity: parseInt(e.target.value) || 0 })}
-                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                          formErrors.capacity ? 'border-red-500 bg-red-50' : 'border-slate-200'
-                        }`}
-                        min="1"
-                      />
-                      {formErrors.capacity && <p className="text-xs text-red-500 mt-1">{formErrors.capacity}</p>}
-                    </div>
+                    {resourceForm.type !== 'EQUIPMENT' && (
+                      <div>
+                        <label className="text-sm font-medium text-slate-700 mb-1 block">Capacity *</label>
+                        <input
+                          type="number"
+                          value={resourceForm.capacity || ''}
+                          onChange={(e) => setResourceForm({ ...resourceForm, capacity: parseInt(e.target.value) || 0 })}
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                            formErrors.capacity ? 'border-red-500 bg-red-50' : 'border-slate-200'
+                          }`}
+                          min="1"
+                        />
+                        {formErrors.capacity && <p className="text-xs text-red-500 mt-1">{formErrors.capacity}</p>}
+                      </div>
+                    )}
                     
                     <div>
                       <label className="text-sm font-medium text-slate-700 mb-1 block">Status</label>
@@ -854,6 +1083,47 @@ const AdminResourceManagement = () => {
                       placeholder="Describe the resource..."
                     />
                     {formErrors.description && <p className="text-xs text-red-500 mt-1">{formErrors.description}</p>}
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">Resource Images</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/webp"
+                      multiple
+                      onChange={(e) => {
+                        uploadResourceImages(e.target.files);
+                        e.target.value = '';
+                      }}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    {resourceForm.images?.length > 0 ? (
+                      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+                        {resourceForm.images.map((imageUrl, imageIndex) => (
+                          <div key={`${imageUrl}-${imageIndex}`} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                            <img
+                              src={imageUrl}
+                              alt={`Resource preview ${imageIndex + 1}`}
+                              className="h-32 w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setResourceForm({
+                                  ...resourceForm,
+                                  images: (resourceForm.images || []).filter((_, index) => index !== imageIndex),
+                                });
+                              }}
+                              className="absolute right-2 top-2 rounded-lg bg-white/90 px-2 py-1 text-xs font-semibold text-red-600 shadow hover:bg-white"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-slate-500">Select one or more local images to upload for this resource.</p>
+                    )}
                   </div>
                   
                   <div>
@@ -995,29 +1265,47 @@ const AdminResourceManagement = () => {
               {activeTab === 'availability' && (
                 <div className="space-y-4">
                   {resourceForm.availabilityWindows?.map((window, idx) => (
-                    <div key={idx} className="flex gap-3 items-center p-3 bg-slate-50 rounded-lg">
-                      <select
-                        value={window.dayOfWeek}
-                        onChange={(e) => updateAvailabilityWindow(idx, 'dayOfWeek', parseInt(e.target.value))}
-                        className="px-3 py-2 border rounded-lg bg-white"
-                      >
-                        {daysOfWeek.map((day, i) => (
-                          <option key={i} value={i}>{day}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="time"
-                        value={window.startTime}
-                        onChange={(e) => updateAvailabilityWindow(idx, 'startTime', e.target.value)}
-                        className="px-3 py-2 border rounded-lg"
-                      />
-                      <span>to</span>
-                      <input
-                        type="time"
-                        value={window.endTime}
-                        onChange={(e) => updateAvailabilityWindow(idx, 'endTime', e.target.value)}
-                        className="px-3 py-2 border rounded-lg"
-                      />
+                    <div key={idx} className="grid grid-cols-1 gap-3 p-3 bg-slate-50 rounded-lg md:grid-cols-[1fr_1fr_120px_auto_120px_auto] md:items-end">
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">Day</label>
+                        <select
+                          value={window.dayOfWeek}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'dayOfWeek', parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border rounded-lg bg-white"
+                        >
+                          {daysOfWeek.map((day, i) => (
+                            <option key={i} value={i}>{day}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">Date</label>
+                        <input
+                          type="date"
+                          value={window.date || ''}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'date', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">Start</label>
+                        <input
+                          type="time"
+                          value={window.startTime}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'startTime', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <span className="hidden pb-2 text-slate-500 md:block">to</span>
+                      <div>
+                        <label className="text-xs font-medium text-slate-500 mb-1 block">End</label>
+                        <input
+                          type="time"
+                          value={window.endTime}
+                          onChange={(e) => updateAvailabilityWindow(idx, 'endTime', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
                       <button onClick={() => removeAvailabilityWindow(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1121,12 +1409,30 @@ const AdminResourceManagement = () => {
 const ResourceCard = ({ resource, onEdit, onDelete, onView, getStatusBadge, getResourceTypeIcon }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 group">
+      <div className="relative h-44 bg-slate-100">
+        {resource.images?.[0] ? (
+          <img
+            src={resource.images[0]}
+            alt={resource.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-slate-400">
+            {getResourceTypeIcon(resource.type)}
+          </div>
+        )}
+        <div className="absolute left-3 top-3 rounded-lg bg-white/90 p-2 text-slate-700 shadow">
+          {getResourceTypeIcon(resource.type)}
+        </div>
+        {resource.images?.length > 1 && (
+          <span className="absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-semibold text-white shadow">
+            {resource.images.length} images
+          </span>
+        )}
+      </div>
       <div className="p-5 border-b border-slate-100">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
-              {getResourceTypeIcon(resource.type)}
-            </div>
             <div>
               <h3 className="font-bold text-slate-800 text-lg">{resource.name}</h3>
               <div className="flex items-center gap-2 mt-1">
@@ -1143,11 +1449,13 @@ const ResourceCard = ({ resource, onEdit, onDelete, onView, getStatusBadge, getR
       </div>
       
       <div className="p-4 bg-slate-50">
-        <div className="grid grid-cols-3 gap-3 text-center mb-3">
-          <div>
-            <div className="text-lg font-bold text-slate-700">{resource.capacity}</div>
-            <div className="text-xs text-slate-500">Capacity</div>
-          </div>
+        <div className={`grid ${resource.type === 'EQUIPMENT' ? 'grid-cols-2' : 'grid-cols-3'} gap-3 text-center mb-3`}>
+          {resource.type !== 'EQUIPMENT' && (
+            <div>
+              <div className="text-lg font-bold text-slate-700">{resource.capacity}</div>
+              <div className="text-xs text-slate-500">Capacity</div>
+            </div>
+          )}
           <div>
             <div className="text-lg font-bold text-slate-700">{resource.amenities?.length || 0}</div>
             <div className="text-xs text-slate-500">Amenities</div>

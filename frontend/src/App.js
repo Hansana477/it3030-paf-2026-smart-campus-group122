@@ -5,24 +5,25 @@ import Login from "./components/Login/Login";
 import AdminDashboard from "./components/AdminDashboard/AdminDashboard";
 import StudentDashboard from "./components/StudentDashboard/StudentDashboard";
 import TechnicianDashboard from "./components/TechnicianDashboard/TechnicianDashboard";
-import AdminResourceManagement from "./components/AdminDashboard/AdminResourceManagement";
+import AdminResorceManagement from "./components/AdminDashboard/AdminResourceManagement";
 import AdminBookingManagement from "./components/AdminDashboard/AdminBookingManagement";
-
 import StudentResourceView from "./components/StudentDashboard/StudentResourceView";
+import PublicRoute from "./components/PublicRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/technician-dashboard" element={<TechnicianDashboard />} />
-        <Route path="/admin-resource-management" element={<AdminResourceManagement />} />
-        <Route path="/admin-booking-management" element={<AdminBookingManagement />} />
-        <Route path="/student-resource-view" element={<StudentResourceView />} />
+        <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/student-dashboard" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentDashboard /></ProtectedRoute>} />
+        <Route path="/technician-dashboard" element={<ProtectedRoute allowedRoles={['TECHNICIAN']}><TechnicianDashboard /></ProtectedRoute>} />
+        <Route path="/admin-resource-management" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminResorceManagement /></ProtectedRoute>} />
+        <Route path="/admin-booking-management" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminBookingManagement /></ProtectedRoute>} />
+        <Route path="/student-resource-view" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentResourceView /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
