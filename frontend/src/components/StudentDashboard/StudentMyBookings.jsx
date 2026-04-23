@@ -120,13 +120,14 @@ const StudentMyBookings = () => {
 
   const downloadQr = (booking) => {
     const qrUrl = getQrImageUrl(booking);
+    const escapedQrUrl = escapeSvg(qrUrl);
     const safeName = (booking.resourceName || 'booking').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="520" height="680" viewBox="0 0 520 680">
   <rect width="520" height="680" fill="#ffffff"/>
   <text x="40" y="52" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#0f172a">Smart Campus Booking</text>
   <text x="40" y="86" font-family="Arial, sans-serif" font-size="14" fill="#475569">Show this QR code for booking verification.</text>
-  <image href="${qrUrl}" x="130" y="120" width="260" height="260"/>
+  <image href="${escapedQrUrl}" x="130" y="120" width="260" height="260"/>
   <text x="40" y="430" font-family="Arial, sans-serif" font-size="17" font-weight="700" fill="#0f172a">${escapeSvg(booking.resourceName)}</text>
   <text x="40" y="464" font-family="Arial, sans-serif" font-size="14" fill="#334155">Date: ${escapeSvg(booking.date)}</text>
   <text x="40" y="492" font-family="Arial, sans-serif" font-size="14" fill="#334155">Time: ${escapeSvg(booking.startTime)} - ${escapeSvg(booking.endTime)}</text>
