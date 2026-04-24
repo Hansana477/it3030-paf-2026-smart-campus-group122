@@ -57,7 +57,13 @@ export async function fetchTicketById(ticketId) {
 
 export async function createTicket(payload, images = []) {
   const formData = new FormData();
-  formData.append("ticket", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      formData.append(key, value);
+    }
+  });
+
   images.forEach((image) => formData.append("images", image));
 
   const response = await fetch(`${API_BASE_URL}/tickets`, {
@@ -87,6 +93,15 @@ export async function updateTicketStatus(ticketId, payload) {
   });
 
   return parseResponse(response, "Failed to update ticket status.");
+}
+
+export async function confirmTicketResolution(ticketId) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/confirm-resolution`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+
+  return parseResponse(response, "Failed to confirm resolution.");
 }
 
 export async function reopenTicket(ticketId, reason) {

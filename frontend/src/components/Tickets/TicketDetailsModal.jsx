@@ -111,6 +111,13 @@ function TicketDetailsModal({
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-rose-800">{ticket.rejectionReason}</p>
                 </div>
               ) : null}
+
+              {ticket.reopenReason ? (
+                <div className="mt-4 rounded-3xl border border-sky-200 bg-sky-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-sky-700">Reopen Reason</p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-sky-800">{ticket.reopenReason}</p>
+                </div>
+              ) : null}
             </section>
 
             <section className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">

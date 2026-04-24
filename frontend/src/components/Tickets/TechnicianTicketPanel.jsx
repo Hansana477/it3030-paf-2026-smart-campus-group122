@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import TicketStatusBadge from "./TicketStatusBadge";
 import TicketDetailsModal from "./TicketDetailsModal";
+import TicketActionDialog from "./TicketActionDialog";
 import { assignTicket, fetchTicketById, fetchTickets, updateTicketStatus } from "./ticketsApi";
 
 function formatDateTime(value) {
@@ -42,6 +43,9 @@ function TechnicianTicketPanel() {
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [isActionSubmitting, setIsActionSubmitting] = useState(false);
 
   const loadTickets = async () => {
     setLoading(true);
@@ -132,20 +136,31 @@ function TechnicianTicketPanel() {
     if (!selectedTicket) {
       return;
     }
+    setActionError("");
+    setShowResolveDialog(true);
+  };
 
-    const resolutionNotes = window.prompt("Enter resolution notes:");
-    if (!resolutionNotes || !resolutionNotes.trim()) {
+  const submitResolution = async (resolutionNotes) => {
+    const trimmedNotes = resolutionNotes.trim();
+    if (!trimmedNotes) {
+      setActionError("Resolution notes are required.");
       return;
     }
+
+    setIsActionSubmitting(true);
+    setActionError("");
 
     try {
       const updated = await updateTicketStatus(selectedTicket.id, {
         status: "RESOLVED",
-        resolutionNotes: resolutionNotes.trim(),
+        resolutionNotes: trimmedNotes,
       });
       handleTicketUpdated(updated);
+      setShowResolveDialog(false);
     } catch (error) {
-      setPanelError(error.message || "Failed to resolve ticket.");
+      setActionError(error.message || "Failed to resolve ticket.");
+    } finally {
+      setIsActionSubmitting(false);
     }
   };
 
@@ -345,6 +360,23 @@ function TechnicianTicketPanel() {
             </section>
           ) : null
         }
+      />
+
+      <TicketActionDialog
+        open={showResolveDialog}
+        title="Resolution Notes"
+        description="Document what was fixed so the student and admin can verify the outcome."
+        submitLabel="Mark Resolved"
+        placeholder="Describe the fix you completed..."
+        error={actionError}
+        isSubmitting={isActionSubmitting}
+        onClose={() => {
+          if (!isActionSubmitting) {
+            setShowResolveDialog(false);
+            setActionError("");
+          }
+        }}
+        onSubmit={submitResolution}
       />
     </>
   );

@@ -10,7 +10,8 @@ import {
 import TicketStatusBadge from "./TicketStatusBadge";
 import TicketFormModal from "./TicketFormModal";
 import TicketDetailsModal from "./TicketDetailsModal";
-import { fetchTicketById, fetchTickets, reopenTicket, updateTicketStatus } from "./ticketsApi";
+import TicketActionDialog from "./TicketActionDialog";
+import { confirmTicketResolution, fetchTicketById, fetchTickets, reopenTicket } from "./ticketsApi";
 
 const STATUS_OPTIONS = ["ALL", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"];
 const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
@@ -48,6 +49,9 @@ function StudentTicketPanel({ openCreateModalByDefault = false }) {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [isActionSubmitting, setIsActionSubmitting] = useState(false);
 
   const loadTickets = async (showSpinner = true) => {
     if (showSpinner) {
@@ -129,17 +133,28 @@ function StudentTicketPanel({ openCreateModalByDefault = false }) {
     if (!selectedTicket) {
       return;
     }
+    setActionError("");
+    setShowReopenDialog(true);
+  };
 
-    const reason = window.prompt("Enter a reason for reopening this ticket:");
-    if (!reason || !reason.trim()) {
+  const submitReopen = async (reason) => {
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      setActionError("Reopen reason is required.");
       return;
     }
 
+    setIsActionSubmitting(true);
+    setActionError("");
+
     try {
-      const updated = await reopenTicket(selectedTicket.id, reason.trim());
+      const updated = await reopenTicket(selectedTicket.id, trimmedReason);
       handleTicketUpdated(updated);
+      setShowReopenDialog(false);
     } catch (error) {
-      setPanelError(error.message || "Failed to reopen ticket.");
+      setActionError(error.message || "Failed to reopen ticket.");
+    } finally {
+      setIsActionSubmitting(false);
     }
   };
 
@@ -149,7 +164,7 @@ function StudentTicketPanel({ openCreateModalByDefault = false }) {
     }
 
     try {
-      const updated = await updateTicketStatus(selectedTicket.id, { status: "CLOSED" });
+      const updated = await confirmTicketResolution(selectedTicket.id);
       handleTicketUpdated(updated);
     } catch (error) {
       setPanelError(error.message || "Failed to close ticket.");
@@ -357,6 +372,23 @@ function StudentTicketPanel({ openCreateModalByDefault = false }) {
             </section>
           ) : null
         }
+      />
+
+      <TicketActionDialog
+        open={showReopenDialog}
+        title="Reopen Ticket"
+        description="Explain why this issue still needs attention so the support team has the right context."
+        submitLabel="Submit Reopen Reason"
+        placeholder="Describe why the issue is not fully resolved..."
+        error={actionError}
+        isSubmitting={isActionSubmitting}
+        onClose={() => {
+          if (!isActionSubmitting) {
+            setShowReopenDialog(false);
+            setActionError("");
+          }
+        }}
+        onSubmit={submitReopen}
       />
     </>
   );

@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -47,7 +48,7 @@ public class TicketController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public TicketModel createTicket(
-            @RequestPart("ticket") CreateTicketRequest ticketRequest,
+            @ModelAttribute CreateTicketRequest ticketRequest,
             @RequestPart(value = "images", required = false) List<MultipartFile> images,
             Authentication authentication,
             HttpServletRequest httpRequest
@@ -97,6 +98,14 @@ public class TicketController {
             Authentication authentication
     ) {
         return ticketService.updateStatus(ticketId, request, getAuthenticatedUser(authentication));
+    }
+
+    @PatchMapping("/{ticketId}/confirm-resolution")
+    public TicketModel confirmResolution(
+            @PathVariable String ticketId,
+            Authentication authentication
+    ) {
+        return ticketService.confirmResolution(ticketId, getAuthenticatedUser(authentication));
     }
 
     @PatchMapping("/{ticketId}/reopen")

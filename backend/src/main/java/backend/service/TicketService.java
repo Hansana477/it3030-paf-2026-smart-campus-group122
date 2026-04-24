@@ -251,10 +251,6 @@ public class TicketService {
     public TicketModel updateStatus(String ticketId, UpdateTicketStatusRequest request, UserModel actor) {
         requireAuthenticated(actor);
 
-        if (!isAdmin(actor) && !isTechnician(actor)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin or technician can update ticket status");
-        }
-
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Status update request is required");
         }
@@ -264,6 +260,10 @@ public class TicketService {
 
         String targetStatus = normalizeStatus(request.getStatus());
         String currentStatus = ticket.getStatus();
+
+        if (!isAdmin(actor) && !isTechnician(actor)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin or technician can update ticket status");
+        }
 
         if (isTechnician(actor)) {
             if (ticket.getAssignedTechnicianId() == null || !actor.getId().equals(ticket.getAssignedTechnicianId())) {
@@ -275,7 +275,7 @@ public class TicketService {
             }
         }
 
-        validateStatusTransition(currentStatus, targetStatus, actor);
+        validateStatusTransition(currentStatus, targetStatus, actor, ticket);
 
         if ("IN_PROGRESS".equals(targetStatus) && ticket.getAssignedTechnicianId() == null) {
             throw new InvalidTicketOperationException("A technician must be assigned before moving a ticket to IN_PROGRESS");
@@ -324,6 +324,38 @@ public class TicketService {
         return ticketRepository.save(ticket);
     }
 
+    public TicketModel confirmResolution(String ticketId, UserModel actor) {
+        requireAuthenticated(actor);
+
+        if (!isStudent(actor)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the reporting student can confirm the resolution");
+        }
+
+        TicketModel ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException(ticketId));
+
+        if (actor.getId() == null || !actor.getId().equals(ticket.getCreatedByUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only confirm resolution for your own tickets");
+        }
+
+        if (!"RESOLVED".equals(ticket.getStatus())) {
+            throw new InvalidTicketOperationException("Only resolved tickets can be confirmed and closed");
+        }
+
+        ticket.setStatus("CLOSED");
+        ticket.setClosedAt(LocalDateTime.now());
+        ticket.touch();
+
+        addActivity(
+                ticket,
+                "RESOLUTION_CONFIRMED",
+                actor,
+                "Student confirmed the fix and closed the ticket"
+        );
+
+        return ticketRepository.save(ticket);
+    }
+
     public TicketModel reopenTicket(String ticketId, ReopenTicketRequest request, UserModel actor) {
         requireAuthenticated(actor);
 
@@ -351,6 +383,7 @@ public class TicketService {
         ticket.setClosedAt(null);
         ticket.setResolvedAt(null);
         ticket.setRejectionReason(null);
+        ticket.setReopenReason(reopenReason);
         ticket.setReopenedCount((ticket.getReopenedCount() == null ? 0 : ticket.getReopenedCount()) + 1);
         ticket.touch();
 
@@ -476,7 +509,7 @@ public class TicketService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
     }
 
-    private void validateStatusTransition(String currentStatus, String targetStatus, UserModel actor) {
+    private void validateStatusTransition(String currentStatus, String targetStatus, UserModel actor, TicketModel ticket) {
         if (currentStatus == null) {
             throw new InvalidTicketOperationException("Current ticket status is missing");
         }
@@ -512,7 +545,7 @@ public class TicketService {
         }
 
         if ("CLOSED".equals(targetStatus) && !isAdmin(actor)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin can close tickets");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin can close tickets through this endpoint");
         }
     }
 

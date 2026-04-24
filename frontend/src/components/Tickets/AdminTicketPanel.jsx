@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import TicketStatusBadge from "./TicketStatusBadge";
 import TicketDetailsModal from "./TicketDetailsModal";
+import TicketActionDialog from "./TicketActionDialog";
 import {
   assignTicket,
   fetchApprovedTechnicians,
@@ -52,6 +53,9 @@ function AdminTicketPanel({ technicians = [] }) {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState("");
+  const [actionDialogType, setActionDialogType] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [isActionSubmitting, setIsActionSubmitting] = useState(false);
 
   const loadAll = async () => {
     setLoading(true);
@@ -137,21 +141,8 @@ function AdminTicketPanel({ technicians = [] }) {
     if (!selectedTicket) {
       return;
     }
-
-    const rejectionReason = window.prompt("Enter rejection reason:");
-    if (!rejectionReason || !rejectionReason.trim()) {
-      return;
-    }
-
-    try {
-      const updated = await updateTicketStatus(selectedTicket.id, {
-        status: "REJECTED",
-        rejectionReason: rejectionReason.trim(),
-      });
-      handleTicketUpdated(updated);
-    } catch (error) {
-      setPanelError(error.message || "Failed to reject ticket.");
-    }
+    setActionError("");
+    setActionDialogType("reject");
   };
 
   const handleClose = async () => {
@@ -173,17 +164,38 @@ function AdminTicketPanel({ technicians = [] }) {
     if (!selectedTicket) {
       return;
     }
+    setActionError("");
+    setActionDialogType("reopen");
+  };
 
-    const reason = window.prompt("Enter reopen reason:");
-    if (!reason || !reason.trim()) {
+  const submitActionDialog = async (value) => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      setActionError(
+        actionDialogType === "reject" ? "Rejection reason is required." : "Reopen reason is required."
+      );
       return;
     }
 
+    setIsActionSubmitting(true);
+    setActionError("");
+
     try {
-      const updated = await reopenTicket(selectedTicket.id, reason.trim());
+      const updated = actionDialogType === "reject"
+        ? await updateTicketStatus(selectedTicket.id, {
+            status: "REJECTED",
+            rejectionReason: trimmedValue,
+          })
+        : await reopenTicket(selectedTicket.id, trimmedValue);
+
       handleTicketUpdated(updated);
+      setActionDialogType("");
     } catch (error) {
-      setPanelError(error.message || "Failed to reopen ticket.");
+      setActionError(
+        error.message || (actionDialogType === "reject" ? "Failed to reject ticket." : "Failed to reopen ticket.")
+      );
+    } finally {
+      setIsActionSubmitting(false);
     }
   };
 
@@ -439,6 +451,31 @@ function AdminTicketPanel({ technicians = [] }) {
             </section>
           ) : null
         }
+      />
+
+      <TicketActionDialog
+        open={Boolean(actionDialogType)}
+        title={actionDialogType === "reject" ? "Reject Ticket" : "Reopen Ticket"}
+        description={
+          actionDialogType === "reject"
+            ? "Explain clearly why this request is being rejected so the student understands the decision."
+            : "Explain why this ticket should be reopened so the next assignee has the right context."
+        }
+        submitLabel={actionDialogType === "reject" ? "Submit Rejection" : "Submit Reopen Reason"}
+        placeholder={
+          actionDialogType === "reject"
+            ? "Enter the rejection reason..."
+            : "Describe why this ticket needs to be reopened..."
+        }
+        error={actionError}
+        isSubmitting={isActionSubmitting}
+        onClose={() => {
+          if (!isActionSubmitting) {
+            setActionDialogType("");
+            setActionError("");
+          }
+        }}
+        onSubmit={submitActionDialog}
       />
     </>
   );

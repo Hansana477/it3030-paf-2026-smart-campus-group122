@@ -35,6 +35,7 @@ public class TicketModel {
 
     private String rejectionReason;
     private String resolutionNotes;
+    private String reopenReason;
 
     private String createdByUserId;
     private String createdByUserName;
@@ -217,6 +218,14 @@ public class TicketModel {
 
     public void setResolutionNotes(String resolutionNotes) {
         this.resolutionNotes = resolutionNotes;
+    }
+
+    public String getReopenReason() {
+        return reopenReason;
+    }
+
+    public void setReopenReason(String reopenReason) {
+        this.reopenReason = reopenReason;
     }
 
     public String getCreatedByUserId() {
