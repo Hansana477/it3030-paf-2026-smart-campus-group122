@@ -53,7 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/users/pending-technicians").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/users/*/approve").hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/uploads/**").authenticated()
+                        //.requestMatchers(HttpMethod.GET, "/uploads/**").authenticated()
 
                         .requestMatchers(HttpMethod.POST, "/tickets").authenticated()
                         .requestMatchers(HttpMethod.GET, "/tickets/**").authenticated()

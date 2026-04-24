@@ -24,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -48,12 +46,32 @@ public class TicketController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public TicketModel createTicket(
-            @ModelAttribute CreateTicketRequest ticketRequest,
-            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam("resourceId") String resourceId,
+            @RequestParam("category") String category,
+            @RequestParam("description") String description,
+            @RequestParam("priority") String priority,
+            @RequestParam(value = "preferredContactName", required = false) String preferredContactName,
+            @RequestParam(value = "preferredContactEmail", required = false) String preferredContactEmail,
+            @RequestParam(value = "preferredContactPhone", required = false) String preferredContactPhone,
+            @RequestParam(value = "images", required = false) MultipartFile[] images,
             Authentication authentication,
             HttpServletRequest httpRequest
     ) throws IOException {
-        return ticketService.createTicket(ticketRequest, images, getAuthenticatedUser(authentication), httpRequest);
+        CreateTicketRequest ticketRequest = new CreateTicketRequest();
+        ticketRequest.setResourceId(resourceId);
+        ticketRequest.setCategory(category);
+        ticketRequest.setDescription(description);
+        ticketRequest.setPriority(priority);
+        ticketRequest.setPreferredContactName(preferredContactName);
+        ticketRequest.setPreferredContactEmail(preferredContactEmail);
+        ticketRequest.setPreferredContactPhone(preferredContactPhone);
+
+        return ticketService.createTicket(
+                ticketRequest,
+                images == null ? List.of() : List.of(images),
+                getAuthenticatedUser(authentication),
+                httpRequest
+        );
     }
 
     @GetMapping

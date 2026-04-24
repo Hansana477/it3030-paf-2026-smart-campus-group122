@@ -2,9 +2,9 @@ package backend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,19 +20,28 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidTicketOperationException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidTicketOperation(InvalidTicketOperationException exception) {
+    public ResponseEntity<Map<String, Object>> handleInvalidTicketOperation(
+            InvalidTicketOperationException exception
+    ) {
         return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, Object>> handleResponseStatusException(ResponseStatusException exception) {
-        String message = exception.getReason() == null ? "Request failed" : exception.getReason();
-        return buildResponse((HttpStatus) exception.getStatusCode(), message);
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(
+            ResponseStatusException exception
+    ) {
+        String message = exception.getReason() == null
+                ? "Request failed"
+                : exception.getReason();
+
+        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+
+        return buildResponse(status, message);
     }
 
     @ExceptionHandler({MultipartException.class, MissingServletRequestPartException.class})
     public ResponseEntity<Map<String, Object>> handleMultipartExceptions(Exception exception) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid multipart ticket request");
+        return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
@@ -45,6 +54,7 @@ public class GlobalExceptionHandler {
         response.put("status", status.value());
         response.put("error", status.getReasonPhrase());
         response.put("message", message);
+
         return ResponseEntity.status(status).body(response);
     }
 }
