@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 function formatPhoneForInput(phone) {
   if (!phone) {
@@ -102,6 +102,49 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+function formatNotificationTime(value) {
+  if (!value) {
+    return "Just now";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Just now";
+  }
+
+  const diffInMinutes = Math.round((Date.now() - date.getTime()) / 60000);
+  if (diffInMinutes <= 1) {
+    return "Just now";
+  }
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} min ago`;
+  }
+
+  const diffInHours = Math.round(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours === 1 ? "" : "s"} ago`;
+  }
+
+  return formatDateTime(value);
+}
+
+function formatNotificationType(type) {
+  switch (type) {
+    case "PASSWORD_CHANGED":
+      return "Password Change";
+    case "ACCOUNT_DETAILS_UPDATED":
+      return "Account Details";
+    case "TECHNICIAN_APPROVED":
+      return "Approval";
+    case "TECHNICIAN_PENDING":
+      return "Admin Review";
+    case "GENERAL":
+      return "Welcome";
+    default:
+      return "Update";
+  }
+}
+
 const fieldClasses =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3.5 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";
 const phonePattern = /^\d{9}$/;
@@ -126,6 +169,11 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
   const [profileSuccess, setProfileSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
+  const notificationPanelRef = useRef(null);
 
   useEffect(() => {
     const nextProfile = createInitialProfile(user);
@@ -133,7 +181,72 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setProfileForm(nextProfile);
   }, [user]);
 
+  useEffect(() => {
+    if (!isNotificationsOpen) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event) => {
+      if (notificationPanelRef.current && !notificationPanelRef.current.contains(event.target)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isNotificationsOpen]);
+
+  useEffect(() => {
+    if (!profileUser.id) {
+      return undefined;
+    }
+
+    loadNotifications({ silent: true });
+    const intervalId = window.setInterval(() => {
+      loadNotifications({ silent: true });
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [profileUser.id]);
+
+  const loadNotifications = async ({ silent = false } = {}) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
+
+    if (!silent) {
+      setIsLoadingNotifications(true);
+    }
+    setNotificationError("");
+
+    try {
+      const response = await fetch("http://localhost:8082/notifications", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => []);
+      if (!response.ok) {
+        const message = data?.message || data?.error || "Failed to load notifications.";
+        throw new Error(message);
+      }
+
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch (loadError) {
+      if (!silent) {
+        setNotificationError(loadError.message || "Something went wrong.");
+      }
+    } finally {
+      if (!silent) {
+        setIsLoadingNotifications(false);
+      }
+    }
+  };
+
   const openProfile = () => {
+    setIsNotificationsOpen(false);
     setProfileForm(createInitialProfile(profileUser));
     setPasswordForm({
       currentPassword: "",
@@ -145,6 +258,80 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setPasswordError("");
     setPasswordSuccess("");
     setIsProfileOpen(true);
+  };
+
+  const toggleNotifications = async () => {
+    const nextOpen = !isNotificationsOpen;
+    setIsNotificationsOpen(nextOpen);
+    if (nextOpen) {
+      await loadNotifications();
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8082/notifications/${notificationId}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = data?.message || data?.error || "Failed to mark notification as read.";
+        throw new Error(message);
+      }
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === notificationId
+            ? {
+                ...notification,
+                read: true,
+              }
+            : notification
+        )
+      );
+    } catch (markError) {
+      setNotificationError(markError.message || "Something went wrong.");
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:8082/notifications/read-all", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = data?.message || data?.error || "Failed to mark all notifications as read.";
+        throw new Error(message);
+      }
+
+      setNotifications((current) =>
+        current.map((notification) => ({
+          ...notification,
+          read: true,
+        }))
+      );
+    } catch (markError) {
+      setNotificationError(markError.message || "Something went wrong.");
+    }
   };
 
   const handleProfileChange = (event) => {
@@ -222,6 +409,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
       setProfileForm(createInitialProfile(updatedUser));
       setProfileSuccess("Profile updated successfully.");
       onUserUpdated?.(updatedUser);
+      await loadNotifications({ silent: true });
     } catch (saveError) {
       setProfileError(saveError.message || "Something went wrong.");
     } finally {
@@ -282,6 +470,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
         confirmPassword: "",
       });
       setPasswordSuccess(data?.message || "Password changed successfully.");
+      await loadNotifications({ silent: true });
     } catch (changeError) {
       setPasswordError(changeError.message || "Something went wrong.");
     } finally {
@@ -344,10 +533,11 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "")
     .slice(0, 20) || "user";
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   return (
     <>
-      <header className="flex flex-col gap-5 rounded-[30px] border border-white/70 bg-white/85 px-5 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-7">
+      <header className="relative z-30 flex flex-col gap-5 rounded-[30px] border border-white/70 bg-white/85 px-5 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">{roleLabel}</p>
           <h1 className="mt-2 text-3xl font-extrabold text-primary sm:text-[2.2rem]">{title}</h1>
@@ -358,6 +548,98 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
             Hi,
             {" "}
             <span className="font-semibold text-primary">{profileUser.fullName || "User"}</span>
+          </div>
+          <div className="relative" ref={notificationPanelRef}>
+            <button
+              type="button"
+              className="relative inline-flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white text-primary shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-accent"
+              onClick={toggleNotifications}
+              aria-label="Open notifications"
+            >
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+                <path d="M10 20a2 2 0 0 0 4 0" />
+              </svg>
+              {unreadCount ? (
+                <span className="absolute right-1.5 top-1.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1 text-[11px] font-bold text-primary">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
+            </button>
+
+            {isNotificationsOpen ? (
+              <div className="fixed right-4 top-24 z-[70] w-[min(92vw,24rem)] overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_26px_70px_rgba(15,23,42,0.16)] backdrop-blur sm:right-6 lg:right-8">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">Notifications</p>
+                    <h3 className="mt-1 text-lg font-bold text-primary">Recent activity</h3>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold uppercase tracking-[0.16em] text-primary transition hover:text-accent"
+                    onClick={markAllNotificationsAsRead}
+                    disabled={!unreadCount}
+                  >
+                    Mark all read
+                  </button>
+                </div>
+
+                {notificationError ? (
+                  <p className="mx-4 mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {notificationError}
+                  </p>
+                ) : null}
+
+                <div className="max-h-[26rem] overflow-y-auto p-4">
+                  {isLoadingNotifications ? (
+                    <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                      Loading notifications...
+                    </p>
+                  ) : null}
+
+                  {!isLoadingNotifications && !notifications.length ? (
+                    <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                      No notifications yet.
+                    </p>
+                  ) : null}
+
+                  <div className="space-y-3">
+                    {notifications.map((notification) => (
+                      <button
+                        key={notification.id}
+                        type="button"
+                        className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                          notification.read
+                            ? "border-slate-200 bg-slate-50/70"
+                            : "border-accent/30 bg-accent/5 shadow-[0_14px_28px_rgba(6,182,212,0.08)]"
+                        }`}
+                        onClick={() => {
+                          if (!notification.read) {
+                            markNotificationAsRead(notification.id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                              {formatNotificationType(notification.type)}
+                            </span>
+                            <p className="text-sm font-bold text-primary">{notification.title}</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">{notification.message}</p>
+                          </div>
+                          {!notification.read ? (
+                            <span className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-secondary" />
+                          ) : null}
+                        </div>
+                        <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                          {formatNotificationTime(notification.createdAt)}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
           <button
             type="button"

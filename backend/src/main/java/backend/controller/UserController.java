@@ -14,6 +14,7 @@ import backend.repository.UserRepository;
 import backend.security.GoogleTokenVerifierService;
 import backend.security.JwtService;
 import backend.service.EmailNotificationService;
+import backend.service.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -34,8 +35,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -56,19 +59,22 @@ public class UserController {
     private final JwtService jwtService;
     private final GoogleTokenVerifierService googleTokenVerifierService;
     private final EmailNotificationService emailNotificationService;
+    private final NotificationService notificationService;
 
     public UserController(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             GoogleTokenVerifierService googleTokenVerifierService,
-            EmailNotificationService emailNotificationService
+            EmailNotificationService emailNotificationService,
+            NotificationService notificationService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.googleTokenVerifierService = googleTokenVerifierService;
         this.emailNotificationService = emailNotificationService;
+        this.notificationService = notificationService;
     }
 
     @PostMapping
@@ -95,6 +101,9 @@ public class UserController {
 
         UserModel savedUser = userRepository.save(newUser);
         emailNotificationService.sendRegistrationEmail(savedUser);
+        if ("TECHNICIAN".equals(savedUser.getRole()) && !savedUser.isApproved()) {
+            notificationService.notifyAdminsOfPendingTechnician(savedUser);
+        }
         return savedUser;
     }
 
@@ -131,6 +140,10 @@ public class UserController {
             );
         }
 
+        if (user.getLastLogin() == null) {
+            notificationService.notifyWelcome(user);
+        }
+
         userRepository.updateLastLogin(user.getId());
 
         UserModel loggedInUser = userRepository.findById(user.getId())
@@ -165,6 +178,10 @@ public class UserController {
         }
 
         String userId = user.getId();
+        if (user.getLastLogin() == null) {
+            notificationService.notifyWelcome(user);
+        }
+
         userRepository.updateLastLogin(userId);
 
         UserModel loggedInUser = userRepository.findById(userId)
@@ -198,6 +215,10 @@ public class UserController {
 
         clearLoginOtpState(user);
         userRepository.save(user);
+        if (user.getLastLogin() == null) {
+            notificationService.notifyWelcome(user);
+        }
+
         userRepository.updateLastLogin(user.getId());
 
         UserModel loggedInUser = userRepository.findById(user.getId())
@@ -253,14 +274,29 @@ public class UserController {
     public UserModel updateUser(@RequestBody UserModel updatedUser, @PathVariable String id, Authentication authentication) {
         UserModel authenticatedUser = requireSelfOrAdmin(authentication, id);
         boolean isAdmin = isAdmin(authenticatedUser);
+        boolean updatingAnotherUser = isAdmin && !authenticatedUser.getId().equals(id);
 
         return userRepository.findById(id)
                 .map(user -> {
                     String normalizedEmail = normalizeEmail(updatedUser.getEmail());
+                    List<String> changedFields = new ArrayList<>();
+                    boolean wasApproved = user.isApproved();
+                    String existingPhone = normalizePhone(user.getPhone());
+                    String nextPhone = normalizePhone(updatedUser.getPhone());
 
                     if (!user.getEmail().equals(normalizedEmail)
                             && userRepository.existsByEmail(normalizedEmail)) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
+                    }
+
+                    if (!Objects.equals(user.getFullName(), updatedUser.getFullName())) {
+                        changedFields.add("full name");
+                    }
+                    if (!Objects.equals(user.getEmail(), normalizedEmail)) {
+                        changedFields.add("email address");
+                    }
+                    if (!Objects.equals(existingPhone, nextPhone)) {
+                        changedFields.add("phone number");
                     }
 
                     user.setFullName(updatedUser.getFullName());
@@ -271,17 +307,26 @@ public class UserController {
                     }
                     if (isAdmin && updatedUser.getRole() != null && !updatedUser.getRole().isBlank()) {
                         String normalizedRole = normalizeRole(updatedUser.getRole());
+                        if (!Objects.equals(user.getRole(), normalizedRole)) {
+                            changedFields.add("role");
+                        }
                         user.setRole(normalizedRole);
                         if (!"TECHNICIAN".equals(normalizedRole)) {
                             user.setApproved(true);
                         }
                     }
                     validateStudentEmailForRole(user.getEmail(), user.getRole());
-                    user.setPhone(normalizePhone(updatedUser.getPhone()));
+                    user.setPhone(nextPhone);
 
                     if (isAdmin) {
+                        if (user.isActive() != updatedUser.isActive()) {
+                            changedFields.add("account status");
+                        }
                         user.setActive(updatedUser.isActive());
                         if ("TECHNICIAN".equals(user.getRole())) {
+                            if (user.isApproved() != updatedUser.isApproved()) {
+                                changedFields.add("approval status");
+                            }
                             user.setApproved(updatedUser.isApproved());
                         } else {
                             user.setApproved(true);
@@ -289,7 +334,15 @@ public class UserController {
                         user.setLastLogin(updatedUser.getLastLogin());
                     }
 
-                    return userRepository.save(user);
+                    UserModel savedUser = userRepository.save(user);
+                    if (!changedFields.isEmpty()) {
+                        notificationService.notifyAccountDetailsUpdated(savedUser, changedFields, updatingAnotherUser);
+                    }
+                    if (isAdmin && "TECHNICIAN".equals(savedUser.getRole()) && !wasApproved && savedUser.isApproved()) {
+                        notificationService.notifyTechnicianApproved(savedUser);
+                    }
+
+                    return savedUser;
                 })
                 .orElseThrow(() -> new UserNotFoundException(id));
     }
@@ -423,6 +476,9 @@ public class UserController {
         user.setApproved(!"TECHNICIAN".equals(normalizedRole));
         UserModel savedUser = userRepository.save(user);
         emailNotificationService.sendRegistrationEmail(savedUser);
+        if ("TECHNICIAN".equals(savedUser.getRole()) && !savedUser.isApproved()) {
+            notificationService.notifyAdminsOfPendingTechnician(savedUser);
+        }
         return savedUser;
     }
 
@@ -455,7 +511,7 @@ public class UserController {
 
                     user.setApproved(true);
                     UserModel savedUser = userRepository.save(user);
-                    emailNotificationService.sendTechnicianApprovedEmail(savedUser);
+                    notificationService.notifyTechnicianApproved(savedUser);
                     return savedUser;
                 })
                 .orElseThrow(() -> new UserNotFoundException(id));
@@ -496,6 +552,7 @@ public class UserController {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         clearPasswordResetState(user);
         userRepository.save(user);
+        notificationService.notifyPasswordChanged(user);
 
         return Map.of("message", "Password changed successfully");
     }
@@ -552,6 +609,7 @@ public class UserController {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         clearPasswordResetState(user);
         userRepository.save(user);
+        notificationService.notifyPasswordChanged(user);
 
         return Map.of("message", "Password has been reset successfully");
     }

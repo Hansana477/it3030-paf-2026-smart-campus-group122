@@ -92,6 +92,29 @@ public class EmailNotificationService {
         sendEmail(user.getEmail(), "Smart Campus password reset code", body);
     }
 
+    public void sendNotificationEmail(UserModel user, String title, String message, String type) {
+        if (user == null || !StringUtils.hasText(user.getEmail()) || !StringUtils.hasText(title) || !StringUtils.hasText(message)) {
+            return;
+        }
+
+        String typeLabel = formatNotificationType(type);
+        String body = String.format(
+                "Hello %s,%n%n"
+                        + "You have a new Smart Campus notification.%n%n"
+                        + "Type: %s%n"
+                        + "Title: %s%n"
+                        + "Details: %s%n%n"
+                        + "Please sign in to Smart Campus to view the latest updates.%n%n"
+                        + "Smart Campus Team",
+                safeName(user),
+                typeLabel,
+                title,
+                message
+        );
+
+        sendEmail(user.getEmail(), "Smart Campus notification: " + title, body);
+    }
+
     public boolean sendLoginOtpEmail(UserModel user, String otpCode) {
         if (user == null || !StringUtils.hasText(user.getEmail()) || !StringUtils.hasText(otpCode)) {
             return false;
@@ -99,10 +122,9 @@ public class EmailNotificationService {
 
         String body = String.format(
                 "Hello %s,%n%n"
-                        + "Use the following login verification code to complete your Smart Campus sign-in:%n"
-                        + "%s%n%n"
+                        + "We received a login request for your Smart Campus account.%n"
+                        + "Your login verification code is: %s%n"
                         + "This code will expire in 10 minutes.%n%n"
-                        + "If you did not try to sign in, you can ignore this email.%n%n"
                         + "Smart Campus Team",
                 safeName(user),
                 otpCode
@@ -134,5 +156,19 @@ public class EmailNotificationService {
 
     private String safeName(UserModel user) {
         return StringUtils.hasText(user.getFullName()) ? user.getFullName() : "User";
+    }
+
+    private String formatNotificationType(String type) {
+        if (!StringUtils.hasText(type)) {
+            return "General update";
+        }
+
+        return switch (type) {
+            case "PASSWORD_CHANGED" -> "Password change";
+            case "ACCOUNT_DETAILS_UPDATED" -> "Account details update";
+            case "TECHNICIAN_APPROVED" -> "Technician approval";
+            case "TECHNICIAN_PENDING" -> "Pending technician approval";
+            default -> "General update";
+        };
     }
 }
