@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../Header/Header";
-import AdminTicketPanel from "../Tickets/TicketDetailsModal";
+import AdminTicketPanel from "../Tickets/AdminTicketPanel";
 
 const adminInputClasses =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10";

@@ -34,7 +34,7 @@ function formatDateTime(value) {
   }).format(date);
 }
 
-function StudentTicketPanel() {
+function StudentTicketPanel({ openCreateModalByDefault = false }) {
   const storedUser = localStorage.getItem("user");
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
 
@@ -44,7 +44,7 @@ function StudentTicketPanel() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [panelError, setPanelError] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(openCreateModalByDefault);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
