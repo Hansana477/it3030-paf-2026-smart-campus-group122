@@ -1,1234 +1,550 @@
-import React, { useState } from 'react';
-import {
-  Calendar,
-  Clock,
-  Users,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Loader2,
-  X,
-  Phone,
-  Mail,
-  User,
-  BookOpen,
-  Zap,
-  FileText,
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, BarChart3, Calendar, CheckCircle, Clock, Download, Loader2, Mail, PieChart, RefreshCw, Search, TrendingUp, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-// ==============================================
-// DUMMY BOOKING DATA
-// ==============================================
-const DUMMY_BOOKINGS = [
-  {
-    id: 'BK001',
-    resourceId: '1',
-    resourceName: 'Main Lecture Hall A',
-    resourceType: 'LECTURE_HALL',
-    location: 'Building A, Floor 1',
-    capacity: 120,
-    bookedSeats: 85,
-    requesterName: 'John Doe',
-    requesterId: 'STU001',
-    requesterEmail: 'john.doe@university.edu',
-    requesterPhone: '+94-701-234-567',
-    date: '2024-12-15',
-    startTime: '09:00',
-    endTime: '11:00',
-    purpose: 'Advanced Programming Lecture',
-    expectedAttendees: 85,
-    createdDate: '2024-12-08',
-    requestedDate: '2024-12-08',
-    status: 'PENDING',
-    notes: 'Need projector and sound system working',
-    rejectionReason: null,
-    approverName: null,
-    amenitiesRequired: ['Projector', 'Sound System', 'WiFi'],
-  },
-  {
-    id: 'BK002',
-    resourceId: '2',
-    resourceName: 'Computer Lab 301',
-    resourceType: 'LAB',
-    location: 'Building C, Floor 3',
-    capacity: 30,
-    bookedSeats: 25,
-    requesterName: 'Sarah Smith',
-    requesterId: 'STU002',
-    requesterEmail: 'sarah.smith@university.edu',
-    requesterPhone: '+94-701-234-568',
-    date: '2024-12-16',
-    startTime: '13:00',
-    endTime: '15:00',
-    purpose: 'Database Design Practical Session',
-    expectedAttendees: 25,
-    createdDate: '2024-12-08',
-    requestedDate: '2024-12-08',
-    status: 'PENDING',
-    notes: 'Students need to install PostgreSQL beforehand',
-    rejectionReason: null,
-    approverName: null,
-    amenitiesRequired: ['Computers', 'Software Licenses'],
-  },
-  {
-    id: 'BK003',
-    resourceId: '3',
-    resourceName: 'Conference Room B',
-    resourceType: 'MEETING_ROOM',
-    location: 'Building B, Floor 2',
-    capacity: 12,
-    bookedSeats: 8,
-    requesterName: 'Michael Johnson',
-    requesterId: 'STU003',
-    requesterEmail: 'michael.j@university.edu',
-    requesterPhone: '+94-701-234-569',
-    date: '2024-12-17',
-    startTime: '10:00',
-    endTime: '11:30',
-    purpose: 'Research Team Meeting',
-    expectedAttendees: 8,
-    createdDate: '2024-12-07',
-    requestedDate: '2024-12-07',
-    status: 'APPROVED',
-    notes: 'Need video conferencing setup',
-    rejectionReason: null,
-    approverName: 'Admin User',
-    amenitiesRequired: ['Video Conference', 'Smart Board'],
-  },
-  {
-    id: 'BK004',
-    resourceId: '1',
-    resourceName: 'Main Lecture Hall A',
-    resourceType: 'LECTURE_HALL',
-    location: 'Building A, Floor 1',
-    capacity: 120,
-    bookedSeats: 100,
-    requesterName: 'Emma Wilson',
-    requesterId: 'STU004',
-    requesterEmail: 'emma.w@university.edu',
-    requesterPhone: '+94-701-234-570',
-    date: '2024-12-18',
-    startTime: '14:00',
-    endTime: '16:00',
-    purpose: 'Annual Student Summit',
-    expectedAttendees: 100,
-    createdDate: '2024-12-06',
-    requestedDate: '2024-12-06',
-    status: 'REJECTED',
-    notes: 'Time conflict with faculty meeting',
-    rejectionReason: 'Time slot already booked by faculty',
-    approverName: 'Admin User',
-    amenitiesRequired: ['Projector', 'Sound System', 'WiFi', 'Whiteboard'],
-  },
-  {
-    id: 'BK005',
-    resourceId: '5',
-    resourceName: 'Silent Study Area',
-    resourceType: 'STUDY_AREA',
-    location: 'Library, Floor 2',
-    capacity: 50,
-    bookedSeats: 40,
-    requesterName: 'Alex Kumar',
-    requesterId: 'STU005',
-    requesterEmail: 'alex.k@university.edu',
-    requesterPhone: '+94-701-234-571',
-    date: '2024-12-19',
-    startTime: '15:00',
-    endTime: '18:00',
-    purpose: 'Final Exam Group Study',
-    expectedAttendees: 40,
-    createdDate: '2024-12-05',
-    requestedDate: '2024-12-05',
-    status: 'APPROVED',
-    notes: 'Please ensure all seating areas are available',
-    rejectionReason: null,
-    approverName: 'Admin User',
-    amenitiesRequired: ['WiFi', 'Power Outlets'],
-  },
-  {
-    id: 'BK006',
-    resourceId: '4',
-    resourceName: 'Portable Projector',
-    resourceType: 'EQUIPMENT',
-    location: 'AV Room, Building A',
-    capacity: 1,
-    bookedSeats: 1,
-    requesterName: 'Lisa Chen',
-    requesterId: 'STU006',
-    requesterEmail: 'lisa.chen@university.edu',
-    requesterPhone: '+94-701-234-572',
-    date: '2024-12-20',
-    startTime: '11:00',
-    endTime: '13:00',
-    purpose: 'Multimedia Project Presentation',
-    expectedAttendees: 50,
-    createdDate: '2024-12-04',
-    requestedDate: '2024-12-04',
-    status: 'PENDING',
-    notes: 'Need HDMI and VGA cables included',
-    rejectionReason: null,
-    approverName: null,
-    amenitiesRequired: ['HDMI Cable', 'VGA Cable'],
-  },
-  {
-    id: 'BK007',
-    resourceId: '2',
-    resourceName: 'Computer Lab 301',
-    resourceType: 'LAB',
-    location: 'Building C, Floor 3',
-    capacity: 30,
-    bookedSeats: 20,
-    requesterName: 'David Brown',
-    requesterId: 'STU007',
-    requesterEmail: 'david.b@university.edu',
-    requesterPhone: '+94-701-234-573',
-    date: '2024-12-21',
-    startTime: '09:00',
-    endTime: '12:00',
-    purpose: 'Web Development Workshop',
-    expectedAttendees: 20,
-    createdDate: '2024-12-03',
-    requestedDate: '2024-12-03',
-    status: 'CANCELLED',
-    notes: 'Instructor cancelled due to illness',
-    rejectionReason: 'Cancelled by requester',
-    approverName: 'Admin User',
-    amenitiesRequired: ['Computers', 'Software Licenses', 'Printers'],
-  },
-  {
-    id: 'BK008',
-    resourceId: '3',
-    resourceName: 'Conference Room B',
-    resourceType: 'MEETING_ROOM',
-    location: 'Building B, Floor 2',
-    capacity: 12,
-    bookedSeats: 6,
-    requesterName: 'Rachel Green',
-    requesterId: 'STU008',
-    requesterEmail: 'rachel.g@university.edu',
-    requesterPhone: '+94-701-234-574',
-    date: '2024-12-22',
-    startTime: '16:00',
-    endTime: '17:00',
-    purpose: 'Department Committee Meeting',
-    expectedAttendees: 6,
-    createdDate: '2024-12-02',
-    requestedDate: '2024-12-02',
-    status: 'PENDING',
-    notes: 'Regular monthly meeting',
-    rejectionReason: null,
-    approverName: null,
-    amenitiesRequired: ['Video Conference'],
-  },
-];
+const API_BASE_URL = 'http://localhost:8082';
+const STATUS_OPTIONS = ['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'];
 
-// Status badge color mapping
-const STATUS_COLORS = {
-  PENDING: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-800', icon: 'text-yellow-600' },
-  APPROVED: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800', icon: 'text-green-600' },
-  REJECTED: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', icon: 'text-red-600' },
-  CANCELLED: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-800', icon: 'text-gray-600' },
-};
-
-const RESOURCE_LAYOUTS = {
-  '1': {
-    layoutLabel: 'Tiered lecture seating',
-    focalPoint: 'Stage + dual projection screens',
-    supportNote: 'Front-left accessible row and side aisle kept open for movement.',
-    seatingLayout: {
-      rows: 8,
-      cols: 15,
-      seats: Array.from({ length: 120 }, (_, i) => ({
-        id: `lh-seat-${i + 1}`,
-        number: `${String.fromCharCode(65 + Math.floor(i / 15))}${(i % 15) + 1}`,
-        status: i < 92 ? 'AVAILABLE' : i < 108 ? 'RESERVED' : 'OCCUPIED',
-        hasPower: i % 5 === 0,
-        isAccessible: i < 2,
-      })),
-    },
-  },
-  '2': {
-    layoutLabel: 'Workstation lab grid',
-    focalPoint: 'Tutor desk + projector wall',
-    supportNote: 'Every workstation includes power, with two assistant terminals near the entrance.',
-    seatingLayout: {
-      rows: 6,
-      cols: 5,
-      seats: Array.from({ length: 30 }, (_, i) => ({
-        id: `lab-seat-${i + 1}`,
-        number: `WS${(i + 1).toString().padStart(2, '0')}`,
-        status: i < 22 ? 'AVAILABLE' : i < 27 ? 'RESERVED' : 'OCCUPIED',
-        hasPower: true,
-        isAccessible: i === 0,
-      })),
-    },
-  },
-  '3': {
-    layoutLabel: 'Conference table',
-    focalPoint: 'Center boardroom table + video wall',
-    supportNote: 'Two spare chairs are kept along the side wall for overflow attendees.',
-    conferenceLayout: {
-      tableLabel: 'Board Table',
-      seats: [
-        { id: 'c1', number: 'N1', position: 'top', status: 'AVAILABLE' },
-        { id: 'c2', number: 'N2', position: 'top', status: 'AVAILABLE' },
-        { id: 'c3', number: 'N3', position: 'top', status: 'RESERVED' },
-        { id: 'c4', number: 'E1', position: 'right', status: 'AVAILABLE' },
-        { id: 'c5', number: 'E2', position: 'right', status: 'OCCUPIED' },
-        { id: 'c6', number: 'E3', position: 'right', status: 'AVAILABLE' },
-        { id: 'c7', number: 'S1', position: 'bottom', status: 'AVAILABLE' },
-        { id: 'c8', number: 'S2', position: 'bottom', status: 'AVAILABLE' },
-        { id: 'c9', number: 'S3', position: 'bottom', status: 'RESERVED' },
-        { id: 'c10', number: 'W1', position: 'left', status: 'AVAILABLE' },
-        { id: 'c11', number: 'W2', position: 'left', status: 'AVAILABLE' },
-        { id: 'c12', number: 'W3', position: 'left', status: 'AVAILABLE' },
-      ],
-    },
-  },
-  '5': {
-    layoutLabel: 'Quiet study rows',
-    focalPoint: 'Individual study desks + silent zone entrance',
-    supportNote: 'Reserved desks are grouped near the charging wall for longer sessions.',
-    seatingLayout: {
-      rows: 10,
-      cols: 5,
-      seats: Array.from({ length: 50 }, (_, i) => ({
-        id: `study-seat-${i + 1}`,
-        number: `S${(i + 1).toString().padStart(2, '0')}`,
-        status: i < 30 ? 'AVAILABLE' : i < 42 ? 'RESERVED' : 'OCCUPIED',
-        hasPower: i % 2 === 0,
-        isAccessible: i === 0,
-      })),
-    },
-  },
-};
-
-const getLayoutStats = (resourceProfile) => {
-  if (!resourceProfile) {
-    return { total: 0, available: 0, reserved: 0, occupied: 0 };
-  }
-
-  const seats = resourceProfile.seatingLayout?.seats || resourceProfile.conferenceLayout?.seats || [];
-  if (!seats.length) {
-    return { total: 0, available: 0, reserved: 0, occupied: 0 };
-  }
-
-  return seats.reduce((summary, seat) => {
-    summary.total += 1;
-    if (seat.status === 'AVAILABLE') summary.available += 1;
-    if (seat.status === 'RESERVED') summary.reserved += 1;
-    if (seat.status === 'OCCUPIED') summary.occupied += 1;
-    return summary;
-  }, { total: 0, available: 0, reserved: 0, occupied: 0 });
-};
-
-// ==============================================
-// MAIN COMPONENT
-// ==============================================
 const AdminBookingManagement = () => {
-  const [bookings, setBookings] = useState(DUMMY_BOOKINGS);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showActionModal, setShowActionModal] = useState(false);
-  const [actionType, setActionType] = useState('approve'); // 'approve' or 'reject'
-  const [rejectionReason, setRejectionReason] = useState('');
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
-  const [selectedResourceType, setSelectedResourceType] = useState('ALL');
-  const [sortBy, setSortBy] = useState('date');
-  const [showNotification, setShowNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState('');
-  const [notificationType, setNotificationType] = useState('success');
-  const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [message, setMessage] = useState('');
+  const [actionBooking, setActionBooking] = useState(null);
+  const [actionType, setActionType] = useState('');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [emailSendingId, setEmailSendingId] = useState('');
 
-  const enrichedBookings = bookings.map((booking) => {
-    const resourceProfile = RESOURCE_LAYOUTS[booking.resourceId] || null;
-    return {
-      ...booking,
-      resourceProfile,
-      layoutStats: getLayoutStats(resourceProfile),
-    };
-  });
-
-  // Show notification
-  const showNotificationMessage = (message, type = 'success') => {
-    setNotificationMessage(message);
-    setNotificationType(type);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
-  };
-
-  // Filter bookings
-  const filteredBookings = enrichedBookings.filter(booking => {
-    const matchesSearch = 
-      booking.resourceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === 'ALL' || booking.status === selectedStatus;
-    const matchesType = selectedResourceType === 'ALL' || booking.resourceType === selectedResourceType;
-    return matchesSearch && matchesStatus && matchesType;
-  });
-
-  // Sort bookings
-  const sortedBookings = [...filteredBookings].sort((a, b) => {
-    switch (sortBy) {
-      case 'date':
-        return new Date(b.date) - new Date(a.date);
-      case 'status':
-        return a.status.localeCompare(b.status);
-      case 'attendees':
-        return b.expectedAttendees - a.expectedAttendees;
-      default:
-        return 0;
-    }
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(sortedBookings.length / itemsPerPage);
-  const startIdx = (currentPage - 1) * itemsPerPage;
-  const paginatedBookings = sortedBookings.slice(startIdx, startIdx + itemsPerPage);
-
-  // Handle approval/rejection
-  const handleApproveBooking = () => {
-    if (!selectedBooking) return;
+  const loadBookings = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setBookings(prev => prev.map(b => 
-        b.id === selectedBooking.id 
-          ? { ...b, status: 'APPROVED', approverName: 'Admin User' }
-          : b
-      ));
-      showNotificationMessage('Booking approved successfully!', 'success');
-      setShowActionModal(false);
-      setShowDetailModal(false);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await response.json().catch(() => []);
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Failed to load bookings');
+      }
+      setBookings(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setMessage(error.message || 'Failed to load bookings');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
-  const handleRejectBooking = () => {
-    if (!selectedBooking || !rejectionReason.trim()) {
-      showNotificationMessage('Please provide a rejection reason', 'error');
+  useEffect(() => {
+    loadBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openAction = (booking, type) => {
+    setActionBooking(booking);
+    setActionType(type);
+    setReason('');
+  };
+
+  const submitAction = async () => {
+    if (!actionBooking) return;
+    if (actionType === 'reject' && !reason.trim()) {
+      setMessage('Reject reason is required');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      setBookings(prev => prev.map(b => 
-        b.id === selectedBooking.id 
-          ? { ...b, status: 'REJECTED', rejectionReason, approverName: 'Admin User' }
-          : b
-      ));
-      showNotificationMessage('Booking rejected successfully!', 'success');
-      setRejectionReason('');
-      setShowActionModal(false);
-      setShowDetailModal(false);
-      setLoading(false);
-    }, 500);
+
+    setSaving(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${actionBooking.id}/${actionType}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || `Failed to ${actionType} booking`);
+      }
+      setBookings(current => current.map(booking => booking.id === data.id ? data : booking));
+      if (actionType === 'approve' && data.approvalEmailStatus === 'FAILED') {
+        setMessage(`Booking approved, but email failed for ${data.requesterEmail}. Check SMTP settings or use Resend Email.`);
+      }
+      setActionBooking(null);
+    } catch (error) {
+      setMessage(error.message || `Failed to ${actionType} booking`);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const openActionModal = (booking, type) => {
-    setSelectedBooking(booking);
-    setActionType(type);
-    setRejectionReason('');
-    setShowActionModal(true);
+  const resendApprovalEmail = async (booking) => {
+    setEmailSendingId(booking.id);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${booking.id}/send-approval-email`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Admin permission denied. Please log out, sign in again with an admin account, then retry.');
+        }
+        throw new Error(data?.message || data?.error || 'Failed to resend approval email');
+      }
+      setBookings(current => current.map(currentBooking => currentBooking.id === data.id ? data : currentBooking));
+      setMessage(data.approvalEmailStatus === 'SENT'
+        ? `Approval email sent to ${data.requesterEmail}.`
+        : `Email still failed for ${data.requesterEmail}. Check backend SMTP logs and mail settings.`);
+    } catch (error) {
+      setMessage(error.message || 'Failed to resend approval email');
+    } finally {
+      setEmailSendingId('');
+    }
   };
 
-  // Calculate statistics
-  const stats = {
-    total: bookings.length,
-    pending: bookings.filter(b => b.status === 'PENDING').length,
-    approved: bookings.filter(b => b.status === 'APPROVED').length,
-    rejected: bookings.filter(b => b.status === 'REJECTED').length,
+  const filteredBookings = bookings.filter(booking => {
+    const matchesStatus = statusFilter === 'ALL' || booking.status === statusFilter;
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = !term ||
+      booking.resourceName?.toLowerCase().includes(term) ||
+      booking.requesterName?.toLowerCase().includes(term) ||
+      booking.requesterEmail?.toLowerCase().includes(term) ||
+      booking.id?.toLowerCase().includes(term);
+    return matchesStatus && matchesSearch;
+  });
+
+  const statusClass = (status) => {
+    switch (status) {
+      case 'APPROVED': return 'bg-emerald-100 text-emerald-700';
+      case 'REJECTED': return 'bg-red-100 text-red-700';
+      case 'CANCELLED': return 'bg-slate-200 text-slate-600';
+      default: return 'bg-amber-100 text-amber-700';
+    }
   };
 
-  const quickPreviewBooking = selectedBooking || paginatedBookings.find(
-    (booking) => booking.resourceProfile?.seatingLayout || booking.resourceProfile?.conferenceLayout
-  );
+  const resourceStats = Object.values(bookings.reduce((stats, booking) => {
+    const key = booking.resourceId || booking.resourceName || 'Unknown resource';
+    const current = stats[key] || {
+      id: key,
+      name: booking.resourceName || 'Unknown resource',
+      location: booking.location || '',
+      total: 0,
+      approved: 0,
+      pending: 0,
+      rejected: 0,
+      cancelled: 0,
+    };
+    current.total += 1;
+    if (booking.status === 'APPROVED') current.approved += 1;
+    if (booking.status === 'PENDING') current.pending += 1;
+    if (booking.status === 'REJECTED') current.rejected += 1;
+    if (booking.status === 'CANCELLED') current.cancelled += 1;
+    stats[key] = current;
+    return stats;
+  }, {})).sort((a, b) => b.total - a.total);
+
+  const maxResourceBookings = Math.max(...resourceStats.map(resource => resource.total), 1);
+  const topResource = resourceStats[0];
+  const statusStats = STATUS_OPTIONS
+    .filter(status => status !== 'ALL')
+    .map(status => ({
+      status,
+      count: bookings.filter(booking => booking.status === status).length,
+    }));
+  const totalBookings = bookings.length;
+  const approvedCount = statusStats.find(item => item.status === 'APPROVED')?.count || 0;
+  const approvalRate = totalBookings ? Math.round((approvedCount / totalBookings) * 100) : 0;
+  const statusColorClass = (status) => {
+    switch (status) {
+      case 'APPROVED': return 'bg-emerald-500';
+      case 'REJECTED': return 'bg-red-500';
+      case 'CANCELLED': return 'bg-slate-400';
+      default: return 'bg-amber-500';
+    }
+  };
+
+  const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const downloadPdfReport = () => {
+    const generatedAt = new Date().toLocaleString();
+    const resourceRows = resourceStats.map(resource => {
+      const width = Math.max((resource.total / maxResourceBookings) * 100, 5);
+      return `
+        <tr>
+          <td>
+            <strong>${escapeHtml(resource.name)}</strong>
+            <span>${escapeHtml(resource.location)}</span>
+          </td>
+          <td>${resource.total}</td>
+          <td>${resource.approved}</td>
+          <td>${resource.pending}</td>
+          <td>${resource.rejected}</td>
+          <td>${resource.cancelled}</td>
+          <td><div class="bar"><div style="width:${width}%"></div></div></td>
+        </tr>
+      `;
+    }).join('');
+    const statusRows = statusStats.map(item => {
+      const percentage = totalBookings ? Math.round((item.count / totalBookings) * 100) : 0;
+      return `
+        <tr>
+          <td>${escapeHtml(item.status)}</td>
+          <td>${item.count}</td>
+          <td>${percentage}%</td>
+        </tr>
+      `;
+    }).join('');
+
+    const reportWindow = window.open('', '_blank');
+    if (!reportWindow) {
+      setMessage('Popup blocked. Please allow popups to download the PDF report.');
+      return;
+    }
+
+    reportWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>Smart Campus Booking Report</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { margin: 0; padding: 32px; font-family: Arial, sans-serif; color: #0f172a; background: #f8fafc; }
+            .page { max-width: 980px; margin: 0 auto; background: white; padding: 32px; border: 1px solid #e2e8f0; border-radius: 18px; }
+            .header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 3px solid #10b981; padding-bottom: 18px; }
+            .eyebrow { color: #059669; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+            h1 { margin: 8px 0 6px; font-size: 30px; }
+            h2 { margin: 28px 0 12px; font-size: 20px; }
+            .muted { color: #64748b; font-size: 13px; }
+            .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+            .card { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; background: #f8fafc; }
+            .card span { display: block; color: #64748b; font-size: 12px; font-weight: 700; }
+            .card strong { display: block; margin-top: 6px; font-size: 24px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+            th { background: #f1f5f9; color: #475569; text-align: left; padding: 10px; }
+            td { border-bottom: 1px solid #e2e8f0; padding: 10px; vertical-align: middle; }
+            td span { display: block; margin-top: 3px; color: #64748b; font-size: 11px; }
+            .bar { height: 9px; min-width: 120px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
+            .bar div { height: 100%; border-radius: 999px; background: #10b981; }
+            .footer { margin-top: 28px; color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+            @media print {
+              body { padding: 0; background: white; }
+              .page { border: 0; border-radius: 0; max-width: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <main class="page">
+            <section class="header">
+              <div>
+                <div class="eyebrow">Smart Campus</div>
+                <h1>Booking Report & Analysis</h1>
+                <p class="muted">Generated at ${escapeHtml(generatedAt)}</p>
+              </div>
+              <div>
+                <p class="muted">Top resource</p>
+                <strong>${escapeHtml(topResource?.name || 'No bookings yet')}</strong>
+              </div>
+            </section>
+
+            <section class="cards">
+              <div class="card"><span>Total Bookings</span><strong>${totalBookings}</strong></div>
+              <div class="card"><span>Approved</span><strong>${approvedCount}</strong></div>
+              <div class="card"><span>Approval Rate</span><strong>${approvalRate}%</strong></div>
+              <div class="card"><span>Resources Booked</span><strong>${resourceStats.length}</strong></div>
+            </section>
+
+            <h2>Most Booked Resources</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Resource</th>
+                  <th>Total</th>
+                  <th>Approved</th>
+                  <th>Pending</th>
+                  <th>Rejected</th>
+                  <th>Cancelled</th>
+                  <th>Chart</th>
+                </tr>
+              </thead>
+              <tbody>${resourceRows || '<tr><td colspan="7">No booking data available.</td></tr>'}</tbody>
+            </table>
+
+            <h2>Status Breakdown</h2>
+            <table>
+              <thead><tr><th>Status</th><th>Count</th><th>Percentage</th></tr></thead>
+              <tbody>${statusRows}</tbody>
+            </table>
+
+            <p class="footer">Smart Campus booking analytics report.</p>
+          </main>
+          <script>
+            window.onload = function () {
+              window.focus();
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    reportWindow.document.close();
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-emerald-50 p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Booking Management</h1>
-        <p className="text-slate-600">Review, approve, or reject resource booking requests</p>
-      </div>
+    <main className="min-h-screen bg-slate-50 px-4 py-8">
+      <section className="mx-auto max-w-7xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Booking Management</p>
+            <h1 className="mt-2 text-4xl font-bold text-slate-900">Review Booking Requests</h1>
+            <p className="mt-2 text-slate-500">Approve pending bookings or reject them with a reason.</p>
+          </div>
+          <button onClick={() => navigate('/admin-dashboard')} className="rounded-xl border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700">
+            Back to Admin Dashboard
+          </button>
+        </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Requests" value={stats.total} icon={<BookOpen />} color="blue" />
-        <StatCard label="Pending" value={stats.pending} icon={<AlertCircle />} color="yellow" />
-        <StatCard label="Approved" value={stats.approved} icon={<CheckCircle />} color="green" />
-        <StatCard label="Rejected" value={stats.rejected} icon={<XCircle />} color="red" />
-      </div>
-
-      {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Search */}
+        <div className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-[1fr_220px_auto]">
           <div className="relative">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
             <input
-              type="text"
-              placeholder="Search booking ID, resource, or requester..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search resource, requester, email, or booking ID"
+              className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4"
             />
           </div>
-
-          {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => {
-              setSelectedStatus(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          >
-            <option value="ALL">All Status</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="CANCELLED">Cancelled</option>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-xl border border-slate-200 px-4 py-3">
+            {STATUS_OPTIONS.map(status => <option key={status} value={status}>{status}</option>)}
           </select>
-
-          {/* Resource Type Filter */}
-          <select
-            value={selectedResourceType}
-            onChange={(e) => {
-              setSelectedResourceType(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          >
-            <option value="ALL">All Resources</option>
-            <option value="LECTURE_HALL">Lecture Hall</option>
-            <option value="LAB">Lab</option>
-            <option value="MEETING_ROOM">Meeting Room</option>
-            <option value="STUDY_AREA">Study Area</option>
-            <option value="EQUIPMENT">Equipment</option>
-          </select>
-
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          >
-            <option value="date">Sort by Date</option>
-            <option value="status">Sort by Status</option>
-            <option value="attendees">Sort by Attendees</option>
-          </select>
+          <button onClick={loadBookings} className="rounded-xl bg-primary px-5 py-3 font-semibold text-white">Refresh</button>
         </div>
-      </div>
 
-      {quickPreviewBooking && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
+        {message && <p className="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{message}</p>}
+        {loading && <p className="mt-8 flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading bookings...</p>}
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-600">Space Preview</p>
-              <h2 className="text-2xl font-bold text-slate-900 mt-1">{quickPreviewBooking.resourceName}</h2>
-              <p className="text-slate-600 mt-1">
-                {quickPreviewBooking.resourceProfile?.layoutLabel} for booking {quickPreviewBooking.id}
-              </p>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Report & Analysis</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">Booking Performance</h2>
+              <p className="mt-1 text-sm text-slate-500">Most booked resources and booking status summary.</p>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <LayoutStatCard label="Available" value={quickPreviewBooking.layoutStats.available} tone="green" />
-              <LayoutStatCard label="Reserved" value={quickPreviewBooking.layoutStats.reserved} tone="amber" />
-              <LayoutStatCard label="Occupied" value={quickPreviewBooking.layoutStats.occupied} tone="rose" />
+            <div className="grid gap-3 sm:grid-cols-[auto_auto] lg:grid-cols-[auto_auto_auto_auto] lg:items-center">
+              <button
+                onClick={downloadPdfReport}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                <Download className="h-4 w-4" />
+                Download PDF
+              </button>
+              <div className="grid grid-cols-3 gap-3 text-center sm:col-span-2 lg:col-span-3">
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-500">Total</p>
+                <p className="text-2xl font-bold text-slate-900">{totalBookings}</p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 px-4 py-3">
+                <p className="text-xs font-semibold text-emerald-700">Approved</p>
+                <p className="text-2xl font-bold text-emerald-700">{approvedCount}</p>
+              </div>
+              <div className="rounded-xl bg-blue-50 px-4 py-3">
+                <p className="text-xs font-semibold text-blue-700">Approval</p>
+                <p className="text-2xl font-bold text-blue-700">{approvalRate}%</p>
+              </div>
+              </div>
             </div>
           </div>
 
-          <BookingSpaceLayout booking={quickPreviewBooking} compact />
-        </div>
-      )}
+          <div className="mt-5 grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="inline-flex items-center gap-2 font-bold text-slate-900">
+                  <BarChart3 className="h-5 w-5 text-emerald-600" />
+                  Most Booked Resources
+                </h3>
+                {topResource && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    Top: {topResource.name}
+                  </span>
+                )}
+              </div>
 
-      {/* Bookings Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-cyan-50 to-blue-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Booking ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Resource</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Layout</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Requester</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Date & Time</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Attendees</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-slate-700">Actions</th>
+              {resourceStats.length === 0 ? (
+                <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">No booking data yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {resourceStats.slice(0, 6).map(resource => (
+                    <div key={resource.id}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-800">{resource.name}</p>
+                          <p className="truncate text-xs text-slate-400">{resource.location}</p>
+                        </div>
+                        <span className="shrink-0 font-bold text-slate-700">{resource.total}</span>
+                      </div>
+                      <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${Math.max((resource.total / maxResourceBookings) * 100, 5)}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                        <span>Approved {resource.approved}</span>
+                        <span>Pending {resource.pending}</span>
+                        <span>Rejected {resource.rejected}</span>
+                        <span>Cancelled {resource.cancelled}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <h3 className="mb-4 inline-flex items-center gap-2 font-bold text-slate-900">
+                <PieChart className="h-5 w-5 text-blue-600" />
+                Status Breakdown
+              </h3>
+              <div className="space-y-3">
+                {statusStats.map(item => {
+                  const percentage = totalBookings ? Math.round((item.count / totalBookings) * 100) : 0;
+                  return (
+                    <div key={item.status}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="inline-flex items-center gap-2 font-semibold text-slate-700">
+                          <span className={`h-2.5 w-2.5 rounded-full ${statusColorClass(item.status)}`} />
+                          {item.status}
+                        </span>
+                        <span className="font-bold text-slate-700">{item.count} ({percentage}%)</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div className={`h-full rounded-full ${statusColorClass(item.status)}`} style={{ width: `${percentage}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr className="text-left text-sm font-semibold text-slate-600">
+                <th className="px-4 py-4">Booking</th>
+                <th className="px-4 py-4">Requester</th>
+                <th className="px-4 py-4">Date & Time</th>
+                <th className="px-4 py-4">Seats</th>
+                <th className="px-4 py-4">Status</th>
+                <th className="px-4 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {paginatedBookings.length > 0 ? (
-                paginatedBookings.map((booking) => (
-                  <tr key={booking.id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="font-medium text-slate-900">{booking.id}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-slate-900 text-sm">{booking.resourceName}</p>
-                        <p className="text-xs text-slate-500">{booking.location}</p>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {filteredBookings.map(booking => (
+                <tr key={booking.id} className="align-top">
+                  <td className="px-4 py-4">
+                    <p className="font-bold text-slate-900">{booking.resourceName}</p>
+                    <p className="mt-1 text-slate-500">{booking.location}</p>
+                    <p className="mt-2 text-slate-600">Purpose: {booking.purpose}</p>
+                  </td>
+                  <td className="px-4 py-4">
+                    <p className="font-semibold text-slate-800">{booking.requesterName}</p>
+                    <p className="text-slate-500">{booking.requesterEmail}</p>
+                  </td>
+                  <td className="px-4 py-4 text-slate-600">
+                    <p className="inline-flex items-center gap-1"><Calendar className="h-4 w-4" /> {booking.date}</p>
+                    <p className="mt-1 inline-flex items-center gap-1"><Clock className="h-4 w-4" /> {booking.startTime} - {booking.endTime}</p>
+                  </td>
+                  <td className="px-4 py-4 text-slate-600">{booking.seatNumbers?.join(', ') || booking.expectedAttendees}</td>
+                  <td className="px-4 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(booking.status)}`}>{booking.status}</span>
+                    {booking.status === 'APPROVED' && (
+                      <p className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold ${
+                        booking.approvalEmailStatus === 'SENT' ? 'text-emerald-600' : 'text-red-600'
+                      }`}>
+                        <Mail className="h-3.5 w-3.5" />
+                        Email {booking.approvalEmailStatus || 'NOT SENT'}
+                      </p>
+                    )}
+                    {booking.rejectionReason && <p className="mt-2 text-xs text-red-600">{booking.rejectionReason}</p>}
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    {booking.status === 'PENDING' ? (
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => openAction(booking, 'approve')} className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 hover:bg-emerald-100">
+                          <CheckCircle className="h-4 w-4" /> Approve
+                        </button>
+                        <button onClick={() => openAction(booking, 'reject')} className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-2 font-semibold text-red-600 hover:bg-red-100">
+                          <XCircle className="h-4 w-4" /> Reject
+                        </button>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {booking.resourceProfile ? (
-                        <div className="text-sm">
-                          <p className="font-medium text-slate-900">{booking.resourceProfile.layoutLabel}</p>
-                          <p className="text-xs text-slate-500">
-                            {booking.layoutStats.available} seats free
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">No seating layout</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="font-medium text-slate-900">{booking.requesterName}</p>
-                        <p className="text-xs text-slate-500">{booking.requesterEmail}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="font-medium text-slate-900">{booking.date}</p>
-                        <p className="text-xs text-slate-500">{booking.startTime} - {booking.endTime}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="font-medium text-slate-900">{booking.expectedAttendees}/{booking.capacity}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={booking.status} />
-                    </td>
-                    <td className="px-6 py-4">
+                    ) : booking.status === 'APPROVED' ? (
                       <button
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setShowDetailModal(true);
-                        }}
-                        className="inline-flex items-center gap-2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors text-sm font-medium"
+                        onClick={() => resendApprovalEmail(booking)}
+                        disabled={emailSendingId === booking.id}
+                        className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
                       >
-                        <Eye className="w-4 h-4" />
-                        View
+                        {emailSendingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Resend Email
                       </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center text-slate-500">
-                    No bookings found matching your criteria
+                    ) : (
+                      <span className="text-slate-400">No action</span>
+                    )}
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
-            <p className="text-sm text-slate-600">
-              Showing {startIdx + 1} to {Math.min(startIdx + itemsPerPage, sortedBookings.length)} of {sortedBookings.length} bookings
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-50"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                    currentPage === page
-                      ? 'bg-cyan-500 text-white'
-                      : 'border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 border border-slate-200 rounded-lg hover:bg-white disabled:opacity-50"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+        {!loading && filteredBookings.length === 0 && (
+          <p className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">No bookings found.</p>
         )}
-      </div>
+      </section>
 
-      {/* Notification */}
-      {showNotification && (
-        <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white font-medium ${
-          notificationType === 'success' ? 'bg-green-500' : 'bg-red-500'
-        }`}>
-          {notificationMessage}
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      {showDetailModal && selectedBooking && (
-        <BookingDetailModal
-          booking={selectedBooking}
-          onClose={() => setShowDetailModal(false)}
-          onApprove={() => openActionModal(selectedBooking, 'approve')}
-          onReject={() => openActionModal(selectedBooking, 'reject')}
-          canApproveReject={selectedBooking.status === 'PENDING'}
-        />
-      )}
-
-      {/* Action Modal */}
-      {showActionModal && selectedBooking && (
-        <ActionModal
-          booking={selectedBooking}
-          action={actionType}
-          rejectionReason={rejectionReason}
-          onReasonChange={setRejectionReason}
-          onConfirm={actionType === 'approve' ? handleApproveBooking : handleRejectBooking}
-          onCancel={() => setShowActionModal(false)}
-          loading={loading}
-        />
-      )}
-    </div>
-  );
-};
-
-// ==============================================
-// HELPER COMPONENTS
-// ==============================================
-
-const StatCard = ({ label, value, icon, color }) => {
-  const colorClasses = {
-    blue: 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 text-blue-700',
-    yellow: 'bg-gradient-to-br from-yellow-50 to-amber-50 border-yellow-200 text-yellow-700',
-    green: 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 text-green-700',
-    red: 'bg-gradient-to-br from-red-50 to-pink-50 border-red-200 text-red-700',
-  };
-
-  return (
-    <div className={`${colorClasses[color]} border rounded-lg p-6`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium opacity-75">{label}</p>
-          <p className="text-3xl font-bold mt-2">{value}</p>
-        </div>
-        <div className="opacity-20">{icon}</div>
-      </div>
-    </div>
-  );
-};
-
-const StatusBadge = ({ status }) => {
-  const colors = STATUS_COLORS[status] || STATUS_COLORS.PENDING;
-  const statusLabels = {
-    PENDING: 'Pending Review',
-    APPROVED: 'Approved',
-    REJECTED: 'Rejected',
-    CANCELLED: 'Cancelled',
-  };
-
-  const statusIcons = {
-    PENDING: <AlertCircle className="w-4 h-4" />,
-    APPROVED: <CheckCircle className="w-4 h-4" />,
-    REJECTED: <XCircle className="w-4 h-4" />,
-    CANCELLED: <AlertCircle className="w-4 h-4" />,
-  };
-
-  return (
-    <div className={`${colors.bg} ${colors.border} border rounded-full px-3 py-1 flex items-center gap-2 w-fit`}>
-      <span className={colors.icon}>{statusIcons[status]}</span>
-      <span className={`${colors.text} text-xs font-semibold`}>{statusLabels[status]}</span>
-    </div>
-  );
-};
-
-const LayoutStatCard = ({ label, value, tone }) => {
-  const tones = {
-    green: 'bg-green-50 border-green-200 text-green-700',
-    amber: 'bg-amber-50 border-amber-200 text-amber-700',
-    rose: 'bg-rose-50 border-rose-200 text-rose-700',
-  };
-
-  return (
-    <div className={`min-w-[88px] rounded-xl border px-4 py-3 text-center ${tones[tone] || tones.green}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-80">{label}</p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
-    </div>
-  );
-};
-
-const SeatStatusLegend = () => (
-  <div className="flex flex-wrap gap-3 text-xs text-slate-500">
-    <span className="flex items-center gap-2">
-      <span className="w-3 h-3 rounded bg-green-100 border border-green-300" />
-      Available
-    </span>
-    <span className="flex items-center gap-2">
-      <span className="w-3 h-3 rounded bg-amber-100 border border-amber-300" />
-      Reserved
-    </span>
-    <span className="flex items-center gap-2">
-      <span className="w-3 h-3 rounded bg-rose-100 border border-rose-300" />
-      Occupied
-    </span>
-    <span className="flex items-center gap-2">
-      <Zap className="w-3 h-3 text-yellow-500" />
-      Power seat
-    </span>
-  </div>
-);
-
-const BookingSpaceLayout = ({ booking, compact = false }) => {
-  const resourceProfile = booking.resourceProfile;
-
-  if (!resourceProfile) {
-    return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-        Layout preview is not available for this resource type.
-      </div>
-    );
-  }
-
-  if (resourceProfile.conferenceLayout) {
-    const topSeats = resourceProfile.conferenceLayout.seats.filter((seat) => seat.position === 'top');
-    const rightSeats = resourceProfile.conferenceLayout.seats.filter((seat) => seat.position === 'right');
-    const bottomSeats = resourceProfile.conferenceLayout.seats.filter((seat) => seat.position === 'bottom');
-    const leftSeats = resourceProfile.conferenceLayout.seats.filter((seat) => seat.position === 'left');
-
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-4">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="rounded-xl bg-slate-900 text-white text-center py-2 text-xs font-semibold uppercase tracking-[0.18em] mb-4">
-              Video Wall
-            </div>
-            <div className="space-y-3">
-              <ConferenceSeatRow seats={topSeats} />
-              <div className="grid grid-cols-[64px_minmax(0,1fr)_64px] gap-3 items-center">
-                <ConferenceSeatColumn seats={leftSeats} />
-                <div className="rounded-[28px] border-2 border-cyan-200 bg-gradient-to-br from-cyan-50 to-blue-50 p-6 text-center shadow-inner">
-                  <p className="text-sm font-semibold text-slate-900">{resourceProfile.conferenceLayout.tableLabel}</p>
-                  <p className="text-xs text-slate-500 mt-1">{resourceProfile.focalPoint}</p>
-                </div>
-                <ConferenceSeatColumn seats={rightSeats} />
-              </div>
-              <ConferenceSeatRow seats={bottomSeats} />
-            </div>
-          </div>
-
-          {!compact && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+      {actionBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-1 h-5 w-5 text-emerald-600" />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-600">Conference Setup</p>
-                <p className="text-sm text-slate-600 mt-2">{resourceProfile.supportNote}</p>
-              </div>
-              <SeatStatusLegend />
-            </div>
-          )}
-        </div>
-        {compact && <SeatStatusLegend />}
-      </div>
-    );
-  }
-
-  const seats = resourceProfile.seatingLayout?.seats || [];
-  const cols = resourceProfile.seatingLayout?.cols || 1;
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 overflow-x-auto">
-          <div className="rounded-xl bg-slate-900 text-white text-center py-2 text-xs font-semibold uppercase tracking-[0.18em] mb-4">
-            {resourceProfile.focalPoint}
-          </div>
-          <div
-            className="grid gap-2 min-w-max"
-            style={{ gridTemplateColumns: `repeat(${cols}, ${compact ? '38px' : '46px'})` }}
-          >
-            {seats.map((seat) => (
-              <div
-                key={seat.id}
-                className={`relative rounded-lg border text-center text-[11px] font-semibold py-2 ${
-                  seat.status === 'AVAILABLE'
-                    ? 'bg-green-100 border-green-300 text-green-800'
-                    : seat.status === 'RESERVED'
-                      ? 'bg-amber-100 border-amber-300 text-amber-800'
-                      : 'bg-rose-100 border-rose-300 text-rose-800'
-                }`}
-                title={`${seat.number} - ${seat.status}`}
-              >
-                {compact ? seat.number.replace(/[^0-9A-Z]/g, '').slice(-2) : seat.number}
-                {seat.hasPower && <Zap className="w-3 h-3 text-yellow-500 absolute -top-1 -right-1 bg-white rounded-full p-0.5" />}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {!compact && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-600">Layout Notes</p>
-              <p className="text-sm text-slate-600 mt-2">{resourceProfile.supportNote}</p>
-            </div>
-            <SeatStatusLegend />
-          </div>
-        )}
-      </div>
-      {compact && <SeatStatusLegend />}
-    </div>
-  );
-};
-
-const ConferenceSeatRow = ({ seats }) => (
-  <div className="flex justify-center gap-2">
-    {seats.map((seat) => (
-      <ConferenceSeat seat={seat} key={seat.id} />
-    ))}
-  </div>
-);
-
-const ConferenceSeatColumn = ({ seats }) => (
-  <div className="flex flex-col items-center gap-2">
-    {seats.map((seat) => (
-      <ConferenceSeat seat={seat} key={seat.id} />
-    ))}
-  </div>
-);
-
-const ConferenceSeat = ({ seat }) => (
-  <div
-    className={`w-12 h-12 rounded-xl border text-[11px] font-semibold flex items-center justify-center ${
-      seat.status === 'AVAILABLE'
-        ? 'bg-green-100 border-green-300 text-green-800'
-        : seat.status === 'RESERVED'
-          ? 'bg-amber-100 border-amber-300 text-amber-800'
-          : 'bg-rose-100 border-rose-300 text-rose-800'
-    }`}
-    title={`${seat.number} - ${seat.status}`}
-  >
-    {seat.number}
-  </div>
-);
-
-const BookingDetailModal = ({ booking, onClose, onApprove, onReject, canApproveReject }) => {
-  const colors = STATUS_COLORS[booking.status];
-  const layoutStats = booking.layoutStats || getLayoutStats(booking.resourceProfile);
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Booking Details</h2>
-            <p className="text-slate-600 text-sm mt-1">Booking ID: {booking.id}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Modal Content */}
-        <div className="p-6 space-y-6">
-          {/* Status Section */}
-          <div className={`${colors.bg} ${colors.border} border rounded-lg p-4`}>
-            <div className="flex items-center gap-3">
-              <span className={colors.icon}>{STATUS_COLORS[booking.status].icon === 'text-yellow-600' ? <AlertCircle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}</span>
-              <div>
-                <p className={`${colors.text} font-semibold`}>
-                  {booking.status === 'PENDING' ? 'Awaiting Approval' : booking.status}
-                </p>
-                {booking.rejectionReason && (
-                  <p className={`${colors.text} text-sm`}>Reason: {booking.rejectionReason}</p>
-                )}
+                <h2 className="text-2xl font-bold text-slate-900">{actionType === 'approve' ? 'Approve Booking' : 'Reject Booking'}</h2>
+                <p className="mt-1 text-sm text-slate-500">{actionBooking.resourceName} for {actionBooking.requesterName}</p>
               </div>
             </div>
-          </div>
-
-          {/* Resource Information */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 rounded-lg p-4">
-              <label className="text-xs font-semibold text-slate-600 uppercase">Resource</label>
-              <p className="text-lg font-bold text-slate-900 mt-1">{booking.resourceName}</p>
-              <p className="text-sm text-slate-600 mt-1">{booking.location}</p>
-              <p className="text-xs text-slate-500 mt-2">{booking.resourceType}</p>
-              {booking.resourceProfile?.layoutLabel && (
-                <p className="text-xs text-cyan-700 mt-2 font-medium">{booking.resourceProfile.layoutLabel}</p>
-              )}
-            </div>
-            <div className="bg-slate-50 rounded-lg p-4">
-              <label className="text-xs font-semibold text-slate-600 uppercase">Capacity</label>
-              <p className="text-lg font-bold text-slate-900 mt-1">{booking.expectedAttendees}/{booking.capacity}</p>
-              <div className="w-full bg-slate-200 rounded-full h-2 mt-2">
-                <div
-                  className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full"
-                  style={{ width: `${(booking.expectedAttendees / booking.capacity) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {(booking.resourceProfile?.seatingLayout || booking.resourceProfile?.conferenceLayout) && (
-            <div className="border border-slate-200 rounded-lg p-4">
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
-                <div>
-                  <h3 className="font-semibold text-slate-900">Layout and Seating Availability</h3>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Admin preview of the space the student requested.
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <LayoutStatCard label="Free" value={layoutStats.available} tone="green" />
-                  <LayoutStatCard label="Held" value={layoutStats.reserved} tone="amber" />
-                  <LayoutStatCard label="Used" value={layoutStats.occupied} tone="rose" />
-                </div>
-              </div>
-
-              <BookingSpaceLayout booking={booking} />
-            </div>
-          )}
-
-          {/* Booking Details */}
-          <div className="border border-slate-200 rounded-lg p-4">
-            <h3 className="font-semibold text-slate-900 mb-4">Booking Information</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-cyan-600" />
-                <div>
-                  <p className="text-xs text-slate-600">Date</p>
-                  <p className="font-semibold text-slate-900">{booking.date}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-cyan-600" />
-                <div>
-                  <p className="text-xs text-slate-600">Time Slot</p>
-                  <p className="font-semibold text-slate-900">{booking.startTime} - {booking.endTime}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5 text-cyan-600" />
-                <div>
-                  <p className="text-xs text-slate-600">Purpose</p>
-                  <p className="font-semibold text-slate-900">{booking.purpose}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-cyan-600" />
-                <div>
-                  <p className="text-xs text-slate-600">Attendees</p>
-                  <p className="font-semibold text-slate-900">{booking.expectedAttendees}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Requester Details */}
-          <div className="border border-slate-200 rounded-lg p-4">
-            <h3 className="font-semibold text-slate-900 mb-4">Requester Information</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <User className="w-5 h-5 text-cyan-600" />
-                <div>
-                  <p className="text-xs text-slate-600">Name</p>
-                  <p className="font-semibold text-slate-900">{booking.requesterName}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-cyan-600" />
-                <div>
-                  <p className="text-xs text-slate-600">Email</p>
-                  <p className="font-semibold text-slate-900">{booking.requesterEmail}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-cyan-600" />
-                <div>
-                  <p className="text-xs text-slate-600">Phone</p>
-                  <p className="font-semibold text-slate-900">{booking.requesterPhone}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Amenities */}
-          {booking.amenitiesRequired && booking.amenitiesRequired.length > 0 && (
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h3 className="font-semibold text-slate-900 mb-3">Required Amenities</h3>
-              <div className="flex flex-wrap gap-2">
-                {booking.amenitiesRequired.map((amenity, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-sm font-medium"
-                  >
-                    {amenity}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Notes */}
-          {booking.notes && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Additional Notes</h3>
-              <p className="text-blue-800 text-sm">{booking.notes}</p>
-            </div>
-          )}
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
-            <div>
-              <p className="text-xs font-semibold uppercase">Requested On</p>
-              <p className="mt-1">{booking.requestedDate}</p>
-            </div>
-            {booking.approverName && (
-              <div>
-                <p className="text-xs font-semibold uppercase">Reviewed By</p>
-                <p className="mt-1">{booking.approverName}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modal Actions */}
-        <div className="flex gap-3 p-6 border-t border-slate-200 bg-slate-50">
-          {canApproveReject ? (
-            <>
-              <button
-                onClick={onReject}
-                className="flex-1 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <XCircle className="w-4 h-4" />
-                Reject
-              </button>
-              <button
-                onClick={onApprove}
-                className="flex-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Approve
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium transition-colors"
-            >
-              Close
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ActionModal = ({
-  booking,
-  action,
-  rejectionReason,
-  onReasonChange,
-  onConfirm,
-  onCancel,
-  loading,
-}) => {
-  const isApprove = action === 'approve';
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        {/* Header */}
-        <div className={`p-6 border-b ${isApprove ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-          <h2 className={`text-xl font-bold ${isApprove ? 'text-green-900' : 'text-red-900'}`}>
-            {isApprove ? '✓ Approve Booking?' : '✗ Reject Booking?'}
-          </h2>
-          <p className={`text-sm mt-1 ${isApprove ? 'text-green-700' : 'text-red-700'}`}>
-            Booking ID: {booking.id}
-          </p>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          <div className="bg-slate-50 rounded-lg p-4">
-            <p className="text-sm text-slate-600">
-              <strong>{booking.resourceName}</strong>
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              {booking.date} • {booking.startTime} - {booking.endTime}
-            </p>
-          </div>
-
-          {!isApprove && (
-            <>
-              <label className="block text-sm font-semibold text-slate-900">
-                Rejection Reason *
-              </label>
+            {actionType === 'reject' && (
               <textarea
-                value={rejectionReason}
-                onChange={(e) => onReasonChange(e.target.value)}
-                placeholder="Explain why this booking is being rejected..."
-                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                rows="4"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                rows={4}
+                placeholder="Reason for rejection"
+                className="mt-5 w-full rounded-xl border border-slate-200 px-4 py-3"
               />
-            </>
-          )}
-
-          {isApprove && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-800">
-                The requester will receive an approval notification and the booking will be confirmed.
-              </p>
+            )}
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setActionBooking(null)} className="rounded-xl px-4 py-2 text-slate-600 hover:bg-slate-100">Close</button>
+              <button onClick={submitAction} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-white hover:bg-emerald-600 disabled:opacity-60">
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Confirm
+              </button>
             </div>
-          )}
+          </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 p-6 border-t border-slate-200 bg-slate-50">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 font-medium transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading || (!isApprove && !rejectionReason.trim())}
-            className={`flex-1 px-4 py-2 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${
-              isApprove
-                ? 'bg-green-500 hover:bg-green-600'
-                : 'bg-red-500 hover:bg-red-600'
-            }`}
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isApprove ? 'Approve' : 'Reject'}
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </main>
   );
 };
 

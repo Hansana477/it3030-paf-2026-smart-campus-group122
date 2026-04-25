@@ -505,6 +505,13 @@ function AdminDashboard() {
               >
                 Manage Catalogue
               </button>
+              <button
+                type="button"
+                onClick={() => navigate("/admin-booking-management")}
+                className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-white/15"
+              >
+                Review Booking Requests
+              </button>
             </div>
           </article>
         </section>

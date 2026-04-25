@@ -32,36 +32,24 @@ function StudentDashboard() {
 
         <section className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
           <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Welcome</p>
-            <h2 className="mt-4 text-4xl font-extrabold text-primary">Student workspace</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Student Profile</p>
+            <h2 className="mt-4 text-4xl font-extrabold text-primary">Student Details</h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-500">
-              Your account is ready. This dashboard now follows the new Smart Campus theme and is prepared for student-facing features.
+              View your campus account details first, then quickly continue to resource bookings.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-4">
-              <button
-                onClick={() => navigate("/student-create-ticket")}
-                className="rounded-2xl bg-accent px-6 py-3 font-semibold text-white shadow-sm"
-              >
-                Create Maintenance Ticket
-              </button>
-
-              <button
-                onClick={() => navigate("/student-track-tickets")}
-                className="rounded-2xl bg-primary px-6 py-3 font-semibold text-white shadow-sm"
-              >
-                Track My Tickets
-              </button>
-            </div>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Role</p>
-                <p className="mt-2 text-2xl font-extrabold text-primary">Student</p>
+                <p className="text-sm text-slate-400">Full Name</p>
+                <p className="mt-2 text-xl font-extrabold text-primary">{currentUser?.fullName || "Student"}</p>
               </div>
               <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Email rule</p>
-                <p className="mt-2 text-lg font-bold text-primary">@my.sliit.lk</p>
+                <p className="text-sm text-slate-400">Email</p>
+                <p className="mt-2 break-words text-lg font-bold text-primary">{currentUser?.email || "Not available"}</p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                <p className="text-sm text-slate-400">Phone</p>
+                <p className="mt-2 text-lg font-bold text-primary">{currentUser?.phone || "Not available"}</p>
               </div>
               <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
                 <p className="text-sm text-slate-400">Status</p>
@@ -70,17 +58,23 @@ function StudentDashboard() {
             </div>
 
             <div className="mt-8 rounded-[28px] border border-accent/20 bg-accent/5 p-6">
-              <h3 className="text-2xl font-bold text-primary">Profile-ready interface</h3>
-              <p className="mt-3 text-base leading-7 text-slate-500">
-                Use the profile icon in the header to update your personal details and change your password without leaving the dashboard.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate("/student-resource-view")}
-                className="mt-5 inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Make Booking
-              </button>
+              <h3 className="text-2xl font-bold text-primary">Booking Actions</h3>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => navigate("/student-resource-view")}
+                  className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Make Booking
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/student-my-bookings")}
+                  className="inline-flex items-center justify-center rounded-2xl border border-primary/20 bg-white px-5 py-3 text-sm font-semibold text-primary transition hover:border-primary hover:bg-slate-50"
+                >
+                  My Booking
+                </button>
+              </div>
             </div>
           </article>
 
@@ -105,9 +99,9 @@ function StudentDashboard() {
                 </p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Next step</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">My Booking</p>
                 <p className="mt-3 text-sm leading-7 text-slate-200">
-                  This page is ready for student-specific modules like requests, issue tracking, or service history.
+                  View pending, approved, rejected, and cancelled bookings from your own booking history.
                 </p>
               </div>
             </div>

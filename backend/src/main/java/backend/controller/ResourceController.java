@@ -21,7 +21,12 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
+@CrossOrigin(origins = {
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001"
+})
 @RequestMapping("/resources")
 public class ResourceController {
 
@@ -82,6 +87,12 @@ public class ResourceController {
         if (resource.getType() != null && "EQUIPMENT".equalsIgnoreCase(resource.getType())) {
             resource.setCapacity(1);
             resource.setSeatingLayout(null);
+            return;
+        }
+
+        if (resource.getSeatingLayout() != null && resource.getSeatingLayout().getSeats() != null
+                && !resource.getSeatingLayout().getSeats().isEmpty()) {
+            resource.setCapacity(resource.getSeatingLayout().getSeats().size());
         }
     }
 

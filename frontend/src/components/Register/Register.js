@@ -339,6 +339,12 @@ function Register() {
               <Link to="/login" className="font-semibold text-accent hover:text-cyan-600">
                 Sign in
               </Link>
+              {" "}
+              or
+              {" "}
+              <Link to="/about-us" className="font-semibold text-accent transition hover:text-primary">
+                learn about us
+              </Link>
             </p>
           </div>
         </section>
