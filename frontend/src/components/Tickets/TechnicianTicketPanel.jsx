@@ -39,6 +39,7 @@ function TechnicianTicketPanel() {
   const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [panelError, setPanelError] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -54,6 +55,7 @@ function TechnicianTicketPanel() {
     try {
       const data = await fetchTickets({
         status: statusFilter === "ALL" ? "" : statusFilter,
+        priority: priorityFilter === "ALL" ? "" : priorityFilter,
         search: searchTerm,
       });
       setTickets(Array.isArray(data) ? data : []);
@@ -68,7 +70,7 @@ function TechnicianTicketPanel() {
   useEffect(() => {
     loadTickets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+  }, [statusFilter, priorityFilter]);
 
   const filteredTickets = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -176,8 +178,9 @@ function TechnicianTicketPanel() {
     <>
       <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
         <div>
-          <h2 className="mt-3 text-3xl font-extrabold text-primary">Technician Ticket Workspace</h2>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-500">
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Ticket management</p>
+          <h2 className="mt-4 text-4xl font-extrabold text-primary">Technician Ticket Workspace</h2>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-500">
             View assigned incidents, claim unassigned open work, update progress, add resolution notes, and communicate with users.
           </p>
         </div>
@@ -221,7 +224,7 @@ function TechnicianTicketPanel() {
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_0.8fr]">
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.4fr_0.7fr_0.7fr]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -241,6 +244,18 @@ function TechnicianTicketPanel() {
               <option value="OPEN">OPEN</option>
               <option value="IN_PROGRESS">IN PROGRESS</option>
               <option value="RESOLVED">RESOLVED</option>
+            </select>
+
+            <select
+              value={priorityFilter}
+              onChange={(event) => setPriorityFilter(event.target.value)}
+              className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+            >
+              <option value="ALL">All Priorities</option>
+              <option value="LOW">LOW</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+              <option value="CRITICAL">CRITICAL</option>
             </select>
           </div>
 
