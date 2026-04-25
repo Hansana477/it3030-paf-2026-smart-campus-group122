@@ -277,39 +277,39 @@ const StudentMyBookings = () => {
         {message && <p className="mt-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{message}</p>}
         {loading && <p className="mt-8 flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading bookings...</p>}
 
-        <section className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Privacy & Policy</p>
-          <h2 className="mt-1 text-xl font-bold text-slate-900">Cancellation Policy</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-700">
+        <section className="mt-6 rounded-2xl border border-white/10 bg-primary p-5 text-white shadow-[0_18px_50px_rgba(15,23,42,0.16)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-accent">Privacy & Policy</p>
+          <h2 className="mt-1 text-xl font-bold text-white">Cancellation Policy</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
             Students can cancel a pending or approved booking only if the cancellation is made at least
             <strong> 3 hours before </strong>
             the booking start time. If the booking starts in less than 3 hours, contact an admin for help.
           </p>
         </section>
 
-        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="mt-8 rounded-2xl border border-white/10 bg-primary p-4 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Booking Calendar</p>
-              <h2 className="mt-1 text-xl font-bold text-slate-900">{calendarTitle}</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-accent">Booking Calendar</p>
+              <h2 className="mt-1 text-xl font-bold text-white">{calendarTitle}</h2>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => changeMonth(-1)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white hover:bg-white/15"
                 aria-label="Previous month"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setCalendarDate(new Date())}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15"
               >
                 Today
               </button>
               <button
                 onClick={() => changeMonth(1)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white hover:bg-white/15"
                 aria-label="Next month"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -317,7 +317,7 @@ const StudentMyBookings = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-slate-400">
+          <div className="mt-4 grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-slate-300">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <span key={day}>{day}</span>)}
           </div>
           <div className="mt-2 grid grid-cols-7 gap-1.5">
@@ -334,11 +334,11 @@ const StudentMyBookings = () => {
                   onClick={() => openCalendarDay(dateKey, dayBookings)}
                   disabled={dayBookings.length === 0}
                   className={`min-h-[82px] rounded-lg border p-1.5 text-left ${
-                    isCurrentMonth ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 text-slate-300'
-                  } ${isToday ? 'ring-2 ring-emerald-400' : ''} ${dayBookings.length > 0 ? 'cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/40' : 'cursor-default'}`}
+                    isCurrentMonth ? 'border-white/10 bg-white/10 text-white' : 'border-white/5 bg-white/5 text-slate-500'
+                  } ${isToday ? 'ring-2 ring-accent' : ''} ${dayBookings.length > 0 ? 'cursor-pointer hover:border-accent/60 hover:bg-accent/10' : 'cursor-default'}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold ${isCurrentMonth ? 'text-slate-800' : 'text-slate-300'}`}>
+                    <span className={`text-xs font-bold ${isCurrentMonth ? 'text-white' : 'text-slate-500'}`}>
                       {day.getDate()}
                     </span>
                     {dayBookings.length > 0 && (
@@ -349,23 +349,23 @@ const StudentMyBookings = () => {
                   </div>
                   <div className="mt-1.5 space-y-1">
                     {dayBookings.slice(0, 1).map(booking => (
-                      <div key={booking.id} className="rounded-lg bg-slate-50 px-2 py-1">
-                        <p className="flex items-center gap-1 truncate text-[11px] font-bold text-slate-700">
+                      <div key={booking.id} className="rounded-lg bg-white/10 px-2 py-1">
+                        <p className="flex items-center gap-1 truncate text-[11px] font-bold text-white">
                           <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(booking.status)}`} />
                           {booking.resourceName}
                         </p>
-                        <p className="truncate text-[10px] text-slate-500">{booking.startTime} - {booking.endTime}</p>
+                        <p className="truncate text-[10px] text-slate-300">{booking.startTime} - {booking.endTime}</p>
                       </div>
                     ))}
                     {dayBookings.length > 1 && (
-                      <p className="text-[10px] font-semibold text-slate-400">+{dayBookings.length - 1} more</p>
+                      <p className="text-[10px] font-semibold text-slate-300">+{dayBookings.length - 1} more</p>
                     )}
                   </div>
                 </button>
               );
             })}
           </div>
-          <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold text-slate-500">
+          <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold text-slate-300">
             <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Pending</span>
             <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Approved</span>
             <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Rejected</span>
@@ -375,7 +375,7 @@ const StudentMyBookings = () => {
 
         <div className="mt-8 grid gap-4">
           {bookings.map(booking => (
-            <article key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <article key={booking.id} className="rounded-2xl border border-primary bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
