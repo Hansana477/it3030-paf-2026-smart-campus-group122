@@ -12,8 +12,6 @@ const StudentMyBookings = () => {
   const [resourcesLoaded, setResourcesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [rescheduleBooking, setRescheduleBooking] = useState(null);
-  const [rescheduleForm, setRescheduleForm] = useState({ date: '', startTime: '', endTime: '' });
   const [calendarDate, setCalendarDate] = useState(() => new Date());
   const [reviewBooking, setReviewBooking] = useState(null);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
@@ -75,47 +73,32 @@ const StudentMyBookings = () => {
     }
   };
 
-  const openReschedule = (booking) => {
-    setRescheduleBooking(booking);
-    setRescheduleForm({
-      date: booking.date,
-      startTime: booking.startTime,
-      endTime: booking.endTime,
-    });
-  };
-
-  const submitReschedule = async () => {
-    if (!rescheduleBooking) return;
-
+  const openReschedule = async (booking) => {
     const confirmed = window.confirm(
-      'Are you sure you want to reschedule this booking? Your current booking will be sent back to PENDING and must be approved again.'
+      'Are you sure you want to reschedule this booking? Your current booking will be cancelled and you will need to make a new booking request.'
     );
+
     if (!confirmed) {
       return;
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${rescheduleBooking.id}/reschedule`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/${booking.id}/cancel`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          ...rescheduleBooking,
-          date: rescheduleForm.date,
-          startTime: rescheduleForm.startTime,
-          endTime: rescheduleForm.endTime,
-        }),
+        body: JSON.stringify({ reason: 'Student requested reschedule' }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(data?.message || data?.error || 'Failed to reschedule booking');
+        throw new Error(data?.message || data?.error || 'Failed to cancel booking for reschedule');
       }
       setBookings(current => current.map(item => item.id === data.id ? data : item));
-      setRescheduleBooking(null);
+      navigate('/resources', { replace: true });
     } catch (error) {
-      setMessage(error.message || 'Failed to reschedule booking');
+      setMessage(error.message || 'Failed to cancel booking for reschedule');
     }
   };
 
@@ -507,28 +490,6 @@ const StudentMyBookings = () => {
           <p className="mt-8 rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center text-slate-500">No bookings yet.</p>
         )}
       </section>
-
-      {rescheduleBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-emerald-100 bg-emerald-50 p-6 text-primary shadow-xl">
-            <h2 className="text-2xl font-bold text-primary">Reschedule Booking</h2>
-            <p className="mt-2 rounded-xl bg-white/70 px-4 py-3 text-sm font-semibold leading-6 text-primary/80">
-              Rescheduling sends this booking back to pending approval. Your new date and time must be approved again.
-            </p>
-            <div className="mt-5 grid gap-4">
-              <input type="date" value={rescheduleForm.date} onChange={(event) => setRescheduleForm(current => ({ ...current, date: event.target.value }))} className="rounded-xl border border-primary/20 bg-white px-4 py-3 text-primary" />
-              <div className="grid grid-cols-2 gap-3">
-                <input type="time" value={rescheduleForm.startTime} onChange={(event) => setRescheduleForm(current => ({ ...current, startTime: event.target.value }))} className="rounded-xl border border-primary/20 bg-white px-4 py-3 text-primary" />
-                <input type="time" value={rescheduleForm.endTime} onChange={(event) => setRescheduleForm(current => ({ ...current, endTime: event.target.value }))} className="rounded-xl border border-primary/20 bg-white px-4 py-3 text-primary" />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setRescheduleBooking(null)} className="rounded-xl px-4 py-2 font-semibold text-primary hover:bg-emerald-100">Close</button>
-              <button onClick={submitReschedule} className="rounded-xl bg-secondary px-4 py-2 font-semibold text-primary hover:bg-emerald-400">Submit</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {calendarDayModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
