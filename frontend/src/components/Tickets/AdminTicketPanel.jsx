@@ -83,6 +83,7 @@ function AdminTicketPanel({ technicians = [] }) {
 
   useEffect(() => {
     loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   const filteredTickets = useMemo(() => {

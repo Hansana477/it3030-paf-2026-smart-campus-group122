@@ -80,6 +80,7 @@ function StudentTicketPanel({ openCreateModalByDefault = false }) {
 
   useEffect(() => {
     loadTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, priorityFilter]);
 
   const filteredTickets = useMemo(() => {
