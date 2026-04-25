@@ -1,0 +1,67 @@
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# IntelliJ IDEA
+# =========================
+.idea/
+*.iml
+out/
+
+# =========================
+# React frontend
+# =========================
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# =========================
+# Spring Boot backend
+# =========================
+backend/target/
+backend/*.log
+backend/logs/
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Ignore local-only Spring config if it contains secrets
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-dev.properties
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.local
+*.env
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.swp
+*.swo
+
+# =========================
+# Optional database dump files
+# Uncomment if needed
+# =========================
+# *.sql
+# *.dump
