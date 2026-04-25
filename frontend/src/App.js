@@ -34,12 +34,13 @@ function App() {
         <Route path="/technician-dashboard" element={<ProtectedRoute allowedRoles={['TECHNICIAN']}><TechnicianDashboard /></ProtectedRoute>} />
         <Route path="/admin-resource-management" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminResorceManagement /></ProtectedRoute>} />
         <Route path="/admin-booking-management" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminBookingManagement /></ProtectedRoute>} />
-        <Route path="/student-resource-view" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentResourceView /></ProtectedRoute>} />
+        <Route path="/resources" element={<StudentResourceView />} />
+        <Route path="/student-resource-view" element={<StudentResourceView />} />
         <Route path="/student-my-bookings" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentMyBookings /></ProtectedRoute>} />
         <Route path="/student-create-ticket" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentCreateTicketPage /></ProtectedRoute>} />
         <Route path="/student-track-tickets" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentTrackTicketsPage /></ProtectedRoute>} />
         <Route path="/about-us" element={<AboutUs />} />
-        <Route path="/faq" element={<ProtectedRoute allowedRoles={['ADMIN', 'STUDENT', 'TECHNICIAN']}><FAQ /></ProtectedRoute>} />
+        <Route path="/faq" element={<FAQ />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

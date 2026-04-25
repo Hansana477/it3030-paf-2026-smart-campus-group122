@@ -17,16 +17,8 @@ function getDashboardPath(user) {
   }
 }
 
-function getResourcesPath(user) {
-  if (user?.role === "ADMIN") {
-    return "/admin-resource-management";
-  }
-
-  if (user?.role === "STUDENT") {
-    return "/student-resource-view";
-  }
-
-  return "/login";
+function getResourcesPath() {
+  return "/resources";
 }
 
 function readStoredUser() {
@@ -482,8 +474,8 @@ function SiteHeader() {
   const links = [
     { label: "Home", to: "/home" },
     { label: "About Us", to: "/about-us" },
-    { label: "FAQ", to: user ? "/faq" : "/login" },
-    { label: "Resources", to: getResourcesPath(user) },
+    { label: "FAQ", to: "/faq" },
+    { label: "Resources", to: getResourcesPath() },
   ];
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 

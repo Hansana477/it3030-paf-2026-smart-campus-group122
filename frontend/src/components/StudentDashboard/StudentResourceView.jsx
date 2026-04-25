@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
   Clock, 
@@ -50,6 +51,7 @@ const API_BASE_URL = 'http://localhost:8082';
 const RESOURCE_REFRESH_INTERVAL_MS = 5000;
 
 const StudentResourceView = () => {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [selectedResource, setSelectedResource] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -254,6 +256,23 @@ const StudentResourceView = () => {
   };
 
   const openBookingModal = (resource) => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    let user = null;
+
+    if (storedUser) {
+      try {
+        user = JSON.parse(storedUser);
+      } catch (error) {
+        user = null;
+      }
+    }
+
+    if (!token || user?.role !== 'STUDENT') {
+      navigate('/login', { state: { from: { pathname: '/resources' } } });
+      return;
+    }
+
     setBookingResource(resource);
     setBookingDate(getNextAvailableDate(resource) || todayDate);
     setSelectedSeatIds([]);
