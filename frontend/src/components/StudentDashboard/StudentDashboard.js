@@ -38,6 +38,22 @@ function StudentDashboard() {
               Your account is ready. This dashboard now follows the new Smart Campus theme and is prepared for student-facing features.
             </p>
 
+            <div className="mt-8 flex flex-wrap gap-4">
+              <button
+                onClick={() => navigate("/student-create-ticket")}
+                className="rounded-2xl bg-accent px-6 py-3 font-semibold text-white shadow-sm"
+              >
+                Create Maintenance Ticket
+              </button>
+
+              <button
+                onClick={() => navigate("/student-track-tickets")}
+                className="rounded-2xl bg-primary px-6 py-3 font-semibold text-white shadow-sm"
+              >
+                Track My Tickets
+              </button>
+            </div>
+
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
                 <p className="text-sm text-slate-400">Role</p>
@@ -97,6 +113,7 @@ function StudentDashboard() {
             </div>
           </article>
         </section>
+
       </section>
     </main>
   );
