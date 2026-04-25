@@ -23,14 +23,14 @@ function FAQ() {
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+        <section className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Questions</p>
-          <h2 className="mt-3 text-3xl font-extrabold text-primary">Frequently asked questions</h2>
+          <h2 className="mt-3 text-3xl font-extrabold text-white">Frequently asked questions</h2>
           <div className="mt-8 grid gap-4">
             {faqs.map((item) => (
-              <article key={item.question} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <h3 className="text-lg font-bold text-primary">{item.question}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500">{item.answer}</p>
+              <article key={item.question} className="rounded-3xl border border-white/10 bg-white/10 p-5">
+                <h3 className="text-lg font-bold text-white">{item.question}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{item.answer}</p>
               </article>
             ))}
           </div>

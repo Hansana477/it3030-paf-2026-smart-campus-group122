@@ -1205,7 +1205,7 @@ const ResourceCard = ({
   getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getOccupancyRate, getTodayHours, onBook
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 group">
+    <div className="bg-primary rounded-xl shadow-[0_18px_45px_rgba(15,23,42,0.18)] border border-white/10 overflow-hidden hover:shadow-[0_22px_55px_rgba(15,23,42,0.24)] transition-all duration-200 group text-white">
       <div className="relative h-48 overflow-hidden">
         <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
           {getResourceTypeIcon(resource.type)}
@@ -1231,20 +1231,20 @@ const ResourceCard = ({
       </div>
       
       <div className="p-4">
-        <h3 className="font-bold text-slate-800 text-lg mb-1 line-clamp-1">{resource.name}</h3>
+        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{resource.name}</h3>
         <div className="flex items-center gap-2 mb-2">
-          <MapPin className="w-3 h-3 text-slate-400" />
-          <p className="text-xs text-slate-500">{resource.location}</p>
+          <MapPin className="w-3 h-3 text-slate-300" />
+          <p className="text-xs text-slate-300">{resource.location}</p>
         </div>
-        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{resource.description}</p>
+        <p className="text-sm text-slate-300 mb-3 line-clamp-2">{resource.description}</p>
         
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-            <span className="text-sm font-medium text-slate-700">{resource.rating}</span>
+            <span className="text-sm font-medium text-slate-200">{resource.rating}</span>
             <span className="text-xs text-slate-400">({resource.reviews})</span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-slate-500">
+          <div className="flex items-center gap-1 text-xs text-slate-300">
             <Clock className="w-3 h-3" />
             <span>{getTodayHours(resource.availabilityWindows)}</span>
           </div>
@@ -1252,11 +1252,11 @@ const ResourceCard = ({
         
         {resource.seatingLayout && (
           <div className="mb-3">
-            <div className="flex justify-between text-xs text-slate-600 mb-1">
+            <div className="flex justify-between text-xs text-slate-300 mb-1">
               <span>Available Seats</span>
               <span>{getAvailableSeatsCount(resource)} / {resource.seatingLayout.seats.length}</span>
             </div>
-            <div className="w-full bg-slate-200 rounded-full h-1.5">
+            <div className="w-full bg-white/10 rounded-full h-1.5">
               <div 
                 className="bg-emerald-500 h-1.5 rounded-full transition-all"
                 style={{ width: `${(getAvailableSeatsCount(resource) / resource.seatingLayout.seats.length) * 100}%` }}
@@ -1265,10 +1265,10 @@ const ResourceCard = ({
           </div>
         )}
         
-        <div className="flex gap-2 pt-3 border-t border-slate-100">
+        <div className="flex gap-2 pt-3 border-t border-white/10">
           <button
             onClick={onViewDetails}
-            className="flex-1 px-3 py-2 text-sm text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+            className="flex-1 px-3 py-2 text-sm text-white bg-white/10 hover:bg-white/15 rounded-lg transition-colors flex items-center justify-center gap-1"
           >
             <Eye className="w-4 h-4" />
             View Details
@@ -1289,7 +1289,7 @@ const ResourceListItem = ({
   getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getTodayHours, onBook
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-all duration-200">
+    <div className="bg-primary rounded-xl shadow-[0_18px_45px_rgba(15,23,42,0.18)] border border-white/10 p-4 hover:shadow-[0_22px_55px_rgba(15,23,42,0.24)] transition-all duration-200 text-white">
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
           <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
@@ -1303,18 +1303,18 @@ const ResourceListItem = ({
         <div className="flex-1">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-bold text-slate-800 text-lg">{resource.name}</h3>
+              <h3 className="font-bold text-white text-lg">{resource.name}</h3>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${getResourceTypeColor(resource.type)}`}>
                   {resource.type.replace('_', ' ')}
                 </span>
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                  <span className="text-sm text-slate-600">{resource.rating}</span>
+                  <span className="text-sm text-slate-300">{resource.rating}</span>
                 </div>
               </div>
             </div>
-            <button onClick={onToggleFavorite} className="p-1.5 hover:bg-slate-100 rounded-lg">
+            <button onClick={onToggleFavorite} className="p-1.5 hover:bg-white/10 rounded-lg">
               {isFavorite ? (
                 <Heart className="w-5 h-5 text-red-500 fill-red-500" />
               ) : (
@@ -1323,9 +1323,9 @@ const ResourceListItem = ({
             </button>
           </div>
           
-          <p className="text-sm text-slate-600 mt-2 line-clamp-2">{resource.description}</p>
+          <p className="text-sm text-slate-300 mt-2 line-clamp-2">{resource.description}</p>
           
-          <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-500">
+          <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-300">
             <div className="flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               <span>{resource.location}</span>
@@ -1348,10 +1348,10 @@ const ResourceListItem = ({
             )}
           </div>
           
-          <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+          <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">
             <button
               onClick={onViewDetails}
-              className="px-3 py-1.5 text-sm text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1"
+              className="px-3 py-1.5 text-sm text-white bg-white/10 hover:bg-white/15 rounded-lg transition-colors flex items-center gap-1"
             >
               <Eye className="w-4 h-4" />
               View Details

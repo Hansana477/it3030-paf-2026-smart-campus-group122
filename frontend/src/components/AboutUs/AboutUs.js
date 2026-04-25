@@ -50,7 +50,7 @@ function AboutUs() {
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-8">
         <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <article className="overflow-hidden rounded-[30px] border border-white/70 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur">
+          <article className="overflow-hidden rounded-[30px] border border-white/10 bg-primary shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur">
             <div className="relative min-h-[520px] overflow-hidden bg-primary px-6 py-10 text-white sm:px-10 sm:py-12">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,197,94,0.28),transparent_28%),radial-gradient(circle_at_85%_75%,rgba(6,182,212,0.24),transparent_30%)]" />
               <div className="relative z-10 flex min-h-[440px] flex-col">
@@ -80,19 +80,19 @@ function AboutUs() {
           </article>
 
           <aside className="grid gap-6">
-            <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+            <section className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
               <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
                 <Headphones size={28} aria-hidden="true" />
               </div>
-              <h2 className="mt-6 text-3xl font-extrabold text-primary">Our mission</h2>
-              <p className="mt-4 text-base leading-7 text-slate-500">
+              <h2 className="mt-6 text-3xl font-extrabold text-white">Our mission</h2>
+              <p className="mt-4 text-base leading-7 text-slate-300">
                 We simplify campus service coordination by making requests, approvals, resource details, and user access easier to manage through one secure platform.
               </p>
             </section>
 
-            <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-              <h2 className="text-3xl font-extrabold text-primary">Why it matters</h2>
-              <p className="mt-4 text-base leading-7 text-slate-500">
+            <section className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
+              <h2 className="text-3xl font-extrabold text-white">Why it matters</h2>
+              <p className="mt-4 text-base leading-7 text-slate-300">
                 Campus teams need fast communication and dependable records. Smart Campus keeps each role focused on the work that matters most, while giving admins clearer oversight.
               </p>
             </section>
@@ -106,13 +106,13 @@ function AboutUs() {
             return (
               <article
                 key={card.title}
-                className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(15,23,42,0.12)]"
+                className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(15,23,42,0.22)]"
               >
                 <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
                   <Icon size={28} aria-hidden="true" />
                 </div>
-                <h3 className="mt-6 text-2xl font-extrabold text-primary">{card.title}</h3>
-                <p className="mt-3 text-base leading-7 text-slate-500">{card.description}</p>
+                <h3 className="mt-6 text-2xl font-extrabold text-white">{card.title}</h3>
+                <p className="mt-3 text-base leading-7 text-slate-300">{card.description}</p>
               </article>
             );
           })}

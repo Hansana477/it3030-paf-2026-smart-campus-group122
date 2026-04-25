@@ -10,10 +10,10 @@ function StudentDashboard() {
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <section className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
-          <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+          <article className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Welcome</p>
-            <h2 className="mt-4 text-4xl font-extrabold text-primary">Student workspace</h2>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-500">
+            <h2 className="mt-4 text-4xl font-extrabold text-white">Student workspace</h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
               Your account is ready. This dashboard now follows the new Smart Campus theme and is prepared for student-facing features.
             </p>
 
@@ -27,41 +27,41 @@ function StudentDashboard() {
 
               <button
                 onClick={() => navigate("/student-track-tickets")}
-                className="rounded-2xl bg-primary px-6 py-3 font-semibold text-white shadow-sm"
+                className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-white/15"
               >
                 Track My Tickets
               </button>
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Role</p>
-                <p className="mt-2 text-2xl font-extrabold text-primary">Student</p>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
+                <p className="text-sm text-slate-300">Role</p>
+                <p className="mt-2 text-2xl font-extrabold text-white">Student</p>
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Email rule</p>
-                <p className="mt-2 text-lg font-bold text-primary">@my.sliit.lk</p>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
+                <p className="text-sm text-slate-300">Email rule</p>
+                <p className="mt-2 text-lg font-bold text-white">@my.sliit.lk</p>
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Status</p>
-                <p className="mt-2 text-lg font-bold text-primary">{user?.active ? "Active" : "Inactive"}</p>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
+                <p className="text-sm text-slate-300">Status</p>
+                <p className="mt-2 text-lg font-bold text-white">{user?.active ? "Active" : "Inactive"}</p>
               </div>
             </div>
 
-            <div className="mt-8 rounded-[28px] border border-accent/20 bg-accent/5 p-6">
-              <h3 className="text-2xl font-bold text-primary">Booking Actions</h3>
+            <div className="mt-8 rounded-[28px] border border-white/10 bg-white/10 p-6">
+              <h3 className="text-2xl font-bold text-white">Booking Actions</h3>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => navigate("/student-resource-view")}
-                  className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  className="inline-flex items-center justify-center rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-500"
                 >
                   Make Booking
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate("/student-my-bookings")}
-                  className="inline-flex items-center justify-center rounded-2xl border border-primary/20 bg-white px-5 py-3 text-sm font-semibold text-primary transition hover:border-primary hover:bg-slate-50"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
                 >
                   My Booking
                 </button>

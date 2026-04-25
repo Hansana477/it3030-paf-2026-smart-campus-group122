@@ -385,25 +385,25 @@ function AdminDashboard() {
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <article className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+          <article className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Approval Center</p>
-            <h2 className="mt-4 text-3xl font-extrabold text-primary">Technician Approval Queue</h2>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-500">
+            <h2 className="mt-4 text-3xl font-extrabold text-white">Technician Approval Queue</h2>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">
               Review new technician registrations and approve only the users who should access the maintenance workspace.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Pending</p>
-                <p className="mt-2 text-3xl font-extrabold text-primary">{pendingTechnicians.length}</p>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
+                <p className="text-sm text-slate-300">Pending</p>
+                <p className="mt-2 text-3xl font-extrabold text-white">{pendingTechnicians.length}</p>
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Access rule</p>
-                <p className="mt-2 text-lg font-bold text-primary">Admin approval required</p>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
+                <p className="text-sm text-slate-300">Access rule</p>
+                <p className="mt-2 text-lg font-bold text-white">Admin approval required</p>
               </div>
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
-                <p className="text-sm text-slate-400">Review goal</p>
-                <p className="mt-2 text-lg font-bold text-primary">Fast and safe onboarding</p>
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-5">
+                <p className="text-sm text-slate-300">Review goal</p>
+                <p className="mt-2 text-lg font-bold text-white">Fast and safe onboarding</p>
               </div>
             </div>
 
@@ -429,12 +429,12 @@ function AdminDashboard() {
               {pendingTechnicians.map((technician) => (
                 <article
                   key={technician.id}
-                  className="flex flex-col gap-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_30px_rgba(15,23,42,0.06)] sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-5 rounded-[28px] border border-white/10 bg-white/10 p-5 shadow-[0_16px_30px_rgba(15,23,42,0.12)] sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="space-y-1">
-                    <h3 className="text-xl font-bold text-primary">{technician.fullName}</h3>
-                    <p className="text-sm text-slate-500">{technician.email}</p>
-                    <p className="text-sm text-slate-500">{technician.phone || "No phone provided"}</p>
+                    <h3 className="text-xl font-bold text-white">{technician.fullName}</h3>
+                    <p className="text-sm text-slate-300">{technician.email}</p>
+                    <p className="text-sm text-slate-300">{technician.phone || "No phone provided"}</p>
                   </div>
 
                   <button
@@ -502,24 +502,24 @@ function AdminDashboard() {
           </article>
         </section>
 
-        <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+        <section className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">User Directory</p>
-              <h2 className="mt-3 text-3xl font-extrabold text-primary">All registered users</h2>
-              <p className="mt-2 text-base leading-7 text-slate-500">
+              <h2 className="mt-3 text-3xl font-extrabold text-white">All registered users</h2>
+              <p className="mt-2 text-base leading-7 text-slate-300">
                 Filter students and technicians quickly, then download the relevant report as a CSV file.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-full border border-slate-200 bg-slate-50/80 px-4 py-2 text-sm text-slate-500">
+              <div className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-slate-300">
                 Showing:
                 {" "}
-                <span className="font-semibold text-primary">{filteredUsers.length}</span>
+                <span className="font-semibold text-white">{filteredUsers.length}</span>
               </div>
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="inline-flex items-center justify-center rounded-2xl bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-500"
                 onClick={handleDownloadReport}
               >
                 Download {selectedFilterLabel} report

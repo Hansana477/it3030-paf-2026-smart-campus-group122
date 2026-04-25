@@ -30,12 +30,12 @@ function Home() {
   return (
     <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       <section className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[1.08fr_0.92fr]">
-        <article className="rounded-[34px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur sm:p-10">
+        <article className="rounded-[34px] border border-white/10 bg-primary p-8 text-white shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur sm:p-10">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Smart Campus</p>
-          <h1 className="mt-5 max-w-4xl text-5xl font-extrabold leading-tight text-primary sm:text-6xl">
+          <h1 className="mt-5 max-w-4xl text-5xl font-extrabold leading-tight text-white sm:text-6xl">
             A clearer way to manage campus services
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-500">
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
             Book resources, track service tickets, manage approvals, and keep campus operations connected from one secure workspace.
           </p>
 
@@ -43,7 +43,7 @@ function Home() {
             {user ? (
               <Link
                 to={getDashboardPath(user)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-cyan-500"
               >
                 Go to dashboard
                 <ArrowRight size={16} aria-hidden="true" />
@@ -52,13 +52,13 @@ function Home() {
               <>
                 <Link
                   to="/login"
-                  className="inline-flex items-center justify-center rounded-2xl bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  className="inline-flex items-center justify-center rounded-2xl bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-cyan-500"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-primary transition hover:border-accent/50"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
                 >
                   Create account
                 </Link>
@@ -93,12 +93,12 @@ function Home() {
             const Icon = item.icon;
 
             return (
-              <article key={item.title} className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+              <article key={item.title} className="rounded-[28px] border border-white/10 bg-primary p-6 text-white shadow-[0_18px_50px_rgba(15,23,42,0.16)] backdrop-blur">
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 text-accent">
                   <Icon size={24} aria-hidden="true" />
                 </div>
-                <h2 className="mt-4 text-xl font-bold text-primary">{item.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">{item.text}</p>
+                <h2 className="mt-4 text-xl font-bold text-white">{item.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{item.text}</p>
               </article>
             );
           })}
