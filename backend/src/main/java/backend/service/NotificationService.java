@@ -67,8 +67,8 @@ public class NotificationService {
     public void notifyWelcome(UserModel user) {
         createSilentNotification(
                 user,
-                "Welcome to Smart Campus!",
-                "Hi " + user.getFullName() + ", welcome to Smart Campus. We are glad to have you here!",
+                "Welcome to UniNex!",
+                "Hi " + user.getFullName() + ", welcome to UniNex. We are glad to have you here!",
                 "GENERAL"
         );
     }
@@ -406,7 +406,7 @@ public class NotificationService {
             createSilentNotification(
                     user,
                     "Resource removed",
-                    "The resource '" + resource.getName() + "' is no longer available in Smart Campus.",
+                    "The resource '" + resource.getName() + "' is no longer available in UniNex.",
                     "RESOURCE_DELETED"
             );
         }
@@ -493,3 +493,4 @@ public class NotificationService {
                 : user.getFullName();
     }
 }
+

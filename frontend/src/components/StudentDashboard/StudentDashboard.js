@@ -14,7 +14,7 @@ function StudentDashboard() {
             <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">Welcome</p>
             <h2 className="mt-4 text-4xl font-extrabold text-white">Student workspace</h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-              Your account is ready. This dashboard now follows the new Smart Campus theme and is prepared for student-facing features.
+              Your account is ready. This dashboard now follows the new UniNex theme and is prepared for student-facing features.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-4">
@@ -105,3 +105,4 @@ function StudentDashboard() {
 }
 
 export default StudentDashboard;
+

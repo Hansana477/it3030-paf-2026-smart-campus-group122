@@ -8,7 +8,6 @@ import {
   Mail,
   MapPin,
   ShieldCheck,
-  Sparkles,
   Wrench,
 } from "lucide-react";
 
@@ -26,8 +25,8 @@ const portals = [
 ];
 
 const contactItems = [
-  { label: "Campus Operations", value: "Smart Campus Help Desk", icon: Building2 },
-  { label: "Email", value: "support@smartcampus.lk", icon: Mail },
+  { label: "Campus Operations", value: "UniNex Help Desk", icon: Building2 },
+  { label: "Email", value: "support@uninex.lk", icon: Mail },
   { label: "Location", value: "Colombo, Sri Lanka", icon: MapPin },
 ];
 
@@ -40,10 +39,10 @@ function SiteFooter() {
         <div className="grid gap-8 lg:grid-cols-[1.25fr_0.85fr_0.9fr]">
           <section>
             <Link to="/home" className="inline-flex items-center gap-3 text-xl font-extrabold text-white">
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary shadow-[0_16px_40px_rgba(6,182,212,0.2)]">
-                <Sparkles size={22} aria-hidden="true" />
+              <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-[0_16px_40px_rgba(6,182,212,0.2)]">
+                <img src="/favicon.ico" alt="" className="h-7 w-7" aria-hidden="true" />
               </span>
-              Smart Campus
+              UniNex
             </Link>
 
             <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
@@ -134,7 +133,7 @@ function SiteFooter() {
         </div>
 
         <div className="mt-7 flex flex-col gap-3 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {currentYear} Smart Campus. All rights reserved.</p>
+          <p>&copy; {currentYear} UniNex. All rights reserved.</p>
           <p>Built for students, technicians, and administrators.</p>
         </div>
       </div>
@@ -143,3 +142,4 @@ function SiteFooter() {
 }
 
 export default SiteFooter;
+

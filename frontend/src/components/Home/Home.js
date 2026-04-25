@@ -26,7 +26,7 @@ const fallbackSlides = [
   {
     id: "campus-services",
     name: "Campus Service Hub",
-    location: "Smart Campus",
+    location: "UniNex",
     description: "Book resources, manage tickets, and keep daily campus activity connected.",
     image: loginImage,
   },
@@ -213,7 +213,7 @@ function Home() {
             <div className="flex max-w-3xl flex-col justify-center">
               <p className="inline-flex w-max items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-accent">
                 <SparkDot />
-                Smart Campus
+                UniNex
               </p>
               <h1 className="mt-6 text-5xl font-extrabold leading-tight text-white sm:text-6xl">
                 Find and book the right campus space
@@ -430,3 +430,4 @@ function SparkDot() {
 }
 
 export default Home;
+

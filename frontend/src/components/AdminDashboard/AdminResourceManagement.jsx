@@ -838,7 +838,7 @@ const AdminResourceManagement = () => {
                   Resource <span className="text-emerald-400">Management Hub</span>
                 </h1>
               </div>
-              <p className="text-slate-300 text-sm">Manage lecture halls, labs, equipment, and study areas for Smart Campus Operations</p>
+              <p className="text-slate-300 text-sm">Manage lecture halls, labs, equipment, and study areas for UniNex Operations</p>
             </div>
             <button
               onClick={handleAddResource}
@@ -1589,3 +1589,4 @@ const Info = ({ className }) => (
 );
 
 export default AdminResourceManagement;
+

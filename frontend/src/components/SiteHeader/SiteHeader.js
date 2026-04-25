@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, Bell, LogOut, Sparkles } from "lucide-react";
+import { ArrowRight, Bell, LogOut } from "lucide-react";
 
 const NOTIFICATION_API_BASE = "http://localhost:8082";
 
@@ -484,10 +484,10 @@ function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-white/70 bg-white/90 px-4 py-3 shadow-[0_12px_34px_rgba(15,23,42,0.08)] backdrop-blur sm:px-6 lg:px-8">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-3 lg:grid-cols-[auto_1fr_auto]">
         <Link to="/home" className="inline-flex items-center gap-3 whitespace-nowrap text-lg font-extrabold text-primary">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white">
-            <Sparkles size={20} aria-hidden="true" />
+          <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-primary">
+            <img src="/favicon.ico" alt="" className="h-6 w-6" aria-hidden="true" />
           </span>
-          Smart Campus
+          UniNex
         </Link>
 
         <nav className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto lg:justify-center" aria-label="Main navigation">
@@ -828,3 +828,4 @@ function SiteHeader() {
 }
 
 export default SiteHeader;
+

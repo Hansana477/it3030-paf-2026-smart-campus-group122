@@ -111,6 +111,7 @@ public class BookingController {
         UserModel user = currentUser(authentication);
         ResourceModel resource = resourceRepository.findById(booking.getResourceId())
                 .orElseThrow(() -> new UserNotFoundException("Could not find resource with id " + booking.getResourceId()));
+        requireActiveResource(resource);
 
         populateBooking(booking, user, resource);
         validateBooking(booking, null);
@@ -201,6 +202,9 @@ public class BookingController {
 
         String oldDate = booking.getDate();
         String oldTime = booking.getStartTime();
+        ResourceModel resource = resourceRepository.findById(booking.getResourceId())
+                .orElseThrow(() -> new UserNotFoundException("Could not find resource with id " + booking.getResourceId()));
+        requireActiveResource(resource);
 
         booking.setDate(request.getDate());
         booking.setStartTime(request.getStartTime());
@@ -255,13 +259,22 @@ public class BookingController {
         }
     }
 
+    private void requireActiveResource(ResourceModel resource) {
+        if (!"ACTIVE".equals(resource.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "This resource is currently not available for booking"
+            );
+        }
+    }
+
     private void applyVerificationDetails(BookingModel booking) {
         if (booking.getVerificationCode() == null || booking.getVerificationCode().isBlank()) {
             booking.setVerificationCode("BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         }
 
         booking.setQrPayload(String.join("|",
-                "SMART_CAMPUS_BOOKING",
+                "UNINEX_BOOKING",
                 "bookingId=" + safeQrValue(booking.getId()),
                 "code=" + safeQrValue(booking.getVerificationCode()),
                 "resource=" + safeQrValue(booking.getResourceName()),
@@ -433,3 +446,4 @@ public class BookingController {
                 .orElseThrow(() -> new UserNotFoundException("Requester not found"));
     }
 }
+

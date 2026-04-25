@@ -560,7 +560,7 @@ function Login() {
                   <div className="flex h-full w-full items-center justify-center bg-accent text-lg font-bold text-white">S</div>
                 </div>
                 <div>
-                  <p className="text-base font-bold leading-none">Smart Campus</p>
+                  <p className="text-base font-bold leading-none">UniNex</p>
                   <p className="mt-1 text-sm text-slate-200">Portal Access</p>
                 </div>
               </div>
@@ -991,3 +991,4 @@ function Login() {
 }
 
 export default Login;
+

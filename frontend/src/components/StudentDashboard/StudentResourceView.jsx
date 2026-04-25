@@ -89,7 +89,7 @@ const StudentResourceView = () => {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/resources?status=ACTIVE`);
+        const response = await fetch(`${API_BASE_URL}/resources`);
         const data = await response.json().catch(() => []);
 
         if (!response.ok) {
@@ -140,8 +140,7 @@ const StudentResourceView = () => {
                           (resource.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'ALL' || resource.type === selectedType;
     const matchesAmenity = selectedAmenity === 'ALL' || (resource.amenities || []).includes(selectedAmenity);
-    const matchesStatus = resource.status === 'ACTIVE'; // Only show active resources to students
-    return matchesSearch && matchesType && matchesAmenity && matchesStatus;
+    return matchesSearch && matchesType && matchesAmenity;
   });
 
   // Pagination
@@ -256,6 +255,11 @@ const StudentResourceView = () => {
   };
 
   const openBookingModal = (resource) => {
+    if (resource.status !== 'ACTIVE') {
+      showNotificationMessage('This resource is not available for booking right now', 'error');
+      return;
+    }
+
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     let user = null;
@@ -312,6 +316,19 @@ const StudentResourceView = () => {
       return `${todayWindow.startTime} - ${todayWindow.endTime}`;
     }
     return 'Closed';
+  };
+  const isResourceBookable = (resource) => resource?.status === 'ACTIVE';
+  const getResourceStatusLabel = (status) => {
+    if (!status) return 'Unavailable';
+    return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+  };
+  const getResourceStatusClasses = (status) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-emerald-100 text-emerald-700';
+      case 'MAINTENANCE': return 'bg-amber-100 text-amber-700';
+      case 'OUT_OF_SERVICE': return 'bg-red-100 text-red-700';
+      default: return 'bg-slate-100 text-slate-700';
+    }
   };
   const addMinutesToTime = (time, minutes) => {
     const [hours, mins] = time.split(':').map(Number);
@@ -469,6 +486,10 @@ const StudentResourceView = () => {
   }, [bookingResource, bookingDate]);
 
   const submitBookingRequest = async () => {
+    if (!isResourceBookable(bookingResource)) {
+      showNotificationMessage('This resource is not available for booking right now', 'error');
+      return;
+    }
     if (!bookingResource || !bookingDate || !selectedSlot || !bookingPurpose.trim()) {
       showNotificationMessage('Select date, seats, time slot, and purpose', 'error');
       return;
@@ -534,7 +555,7 @@ const StudentResourceView = () => {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
               <Building className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm">Smart Campus Resources</span>
+              <span className="text-sm">UniNex Resources</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Find Your Perfect Study Space
@@ -680,6 +701,9 @@ const StudentResourceView = () => {
                 getAvailableSeatsCount={getAvailableSeatsCount}
                 getOccupancyRate={getOccupancyRate}
                 getTodayHours={getTodayHours}
+                isResourceBookable={isResourceBookable}
+                getResourceStatusLabel={getResourceStatusLabel}
+                getResourceStatusClasses={getResourceStatusClasses}
                 onBook={() => openBookingModal(resource)}
               />
             ))}
@@ -697,6 +721,9 @@ const StudentResourceView = () => {
                 getResourceTypeColor={getResourceTypeColor}
                 getAvailableSeatsCount={getAvailableSeatsCount}
                 getTodayHours={getTodayHours}
+                isResourceBookable={isResourceBookable}
+                getResourceStatusLabel={getResourceStatusLabel}
+                getResourceStatusClasses={getResourceStatusClasses}
                 onBook={() => openBookingModal(resource)}
               />
             ))}
@@ -754,7 +781,12 @@ const StudentResourceView = () => {
                 <div className={`p-2 rounded-lg ${getResourceTypeColor(selectedResource.type)}`}>
                   {getResourceTypeIcon(selectedResource.type)}
                 </div>
-                <h3 className="text-xl font-bold text-slate-800">{selectedResource.name}</h3>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">{selectedResource.name}</h3>
+                  <span className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-bold ${getResourceStatusClasses(selectedResource.status)}`}>
+                    {getResourceStatusLabel(selectedResource.status)}
+                  </span>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
@@ -840,6 +872,11 @@ const StudentResourceView = () => {
               <div className="mb-6">
                 <h4 className="font-semibold text-slate-800 mb-2">Description</h4>
                 <p className="text-slate-600">{selectedResource.description}</p>
+                {!isResourceBookable(selectedResource) && (
+                  <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                    This resource is currently {getResourceStatusLabel(selectedResource.status).toLowerCase()} and cannot be booked.
+                  </p>
+                )}
               </div>
               
               {/* Details Grid */}
@@ -1010,10 +1047,11 @@ const StudentResourceView = () => {
                   setShowDetailsModal(false);
                   openBookingModal(selectedResource);
                 }}
-                className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+                disabled={!isResourceBookable(selectedResource)}
+                className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
               >
                 <Calendar className="w-4 h-4" />
-                Book Now
+                {isResourceBookable(selectedResource) ? 'Book Now' : 'Not Available'}
               </button>
             </div>
           </div>
@@ -1202,8 +1240,11 @@ const StudentResourceView = () => {
 // Resource Card Component (Grid View)
 const ResourceCard = ({ 
   resource, isFavorite, onViewDetails, onToggleFavorite,
-  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getOccupancyRate, getTodayHours, onBook
+  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getOccupancyRate, getTodayHours,
+  isResourceBookable, getResourceStatusLabel, getResourceStatusClasses, onBook
 }) => {
+  const bookable = isResourceBookable(resource);
+
   return (
     <div className="bg-primary rounded-xl shadow-[0_18px_45px_rgba(15,23,42,0.18)] border border-white/10 overflow-hidden hover:shadow-[0_22px_55px_rgba(15,23,42,0.24)] transition-all duration-200 group text-white">
       <div className="relative h-48 overflow-hidden">
@@ -1228,6 +1269,13 @@ const ResourceCard = ({
             {resource.type.replace('_', ' ')}
           </span>
         </div>
+        {!bookable && (
+          <div className="absolute bottom-3 right-3">
+            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getResourceStatusClasses(resource.status)}`}>
+              {getResourceStatusLabel(resource.status)}
+            </span>
+          </div>
+        )}
       </div>
       
       <div className="p-4">
@@ -1237,6 +1285,11 @@ const ResourceCard = ({
           <p className="text-xs text-slate-300">{resource.location}</p>
         </div>
         <p className="text-sm text-slate-300 mb-3 line-clamp-2">{resource.description}</p>
+        {!bookable && (
+          <p className="mb-3 rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
+            Not available for booking right now.
+          </p>
+        )}
         
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1">
@@ -1273,9 +1326,13 @@ const ResourceCard = ({
             <Eye className="w-4 h-4" />
             View Details
           </button>
-          <button onClick={onBook} className="px-3 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-1">
+          <button
+            onClick={onBook}
+            disabled={!bookable}
+            className="px-3 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:text-slate-300"
+          >
             <Calendar className="w-4 h-4" />
-            Book
+            {bookable ? 'Book' : 'Unavailable'}
           </button>
         </div>
       </div>
@@ -1286,8 +1343,11 @@ const ResourceCard = ({
 // Resource List Item Component (List View)
 const ResourceListItem = ({ 
   resource, isFavorite, onViewDetails, onToggleFavorite,
-  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getTodayHours, onBook
+  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getTodayHours,
+  isResourceBookable, getResourceStatusLabel, getResourceStatusClasses, onBook
 }) => {
+  const bookable = isResourceBookable(resource);
+
   return (
     <div className="bg-primary rounded-xl shadow-[0_18px_45px_rgba(15,23,42,0.18)] border border-white/10 p-4 hover:shadow-[0_22px_55px_rgba(15,23,42,0.24)] transition-all duration-200 text-white">
       <div className="flex flex-col md:flex-row gap-4">
@@ -1308,6 +1368,11 @@ const ResourceListItem = ({
                 <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${getResourceTypeColor(resource.type)}`}>
                   {resource.type.replace('_', ' ')}
                 </span>
+                {!bookable && (
+                  <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${getResourceStatusClasses(resource.status)}`}>
+                    {getResourceStatusLabel(resource.status)}
+                  </span>
+                )}
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                   <span className="text-sm text-slate-300">{resource.rating}</span>
@@ -1324,6 +1389,11 @@ const ResourceListItem = ({
           </div>
           
           <p className="text-sm text-slate-300 mt-2 line-clamp-2">{resource.description}</p>
+          {!bookable && (
+            <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
+              Not available for booking right now.
+            </p>
+          )}
           
           <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-300">
             <div className="flex items-center gap-1">
@@ -1356,9 +1426,13 @@ const ResourceListItem = ({
               <Eye className="w-4 h-4" />
               View Details
             </button>
-            <button onClick={onBook} className="px-3 py-1.5 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center gap-1">
+            <button
+              onClick={onBook}
+              disabled={!bookable}
+              className="px-3 py-1.5 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center gap-1 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:text-slate-300"
+            >
               <Calendar className="w-4 h-4" />
-              Book Now
+              {bookable ? 'Book Now' : 'Unavailable'}
             </button>
           </div>
         </div>
@@ -1368,3 +1442,4 @@ const ResourceListItem = ({
 };
 
 export default StudentResourceView;
+

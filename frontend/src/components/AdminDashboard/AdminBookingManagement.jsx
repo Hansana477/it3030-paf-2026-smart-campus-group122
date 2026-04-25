@@ -217,7 +217,7 @@ const AdminBookingManagement = () => {
       <!doctype html>
       <html>
         <head>
-          <title>Smart Campus Booking Report</title>
+          <title>UniNex Booking Report</title>
           <style>
             * { box-sizing: border-box; }
             body { margin: 0; padding: 32px; font-family: Arial, sans-serif; color: #0f172a; background: #f8fafc; }
@@ -248,7 +248,7 @@ const AdminBookingManagement = () => {
           <main class="page">
             <section class="header">
               <div>
-                <div class="eyebrow">Smart Campus</div>
+                <div class="eyebrow">UniNex</div>
                 <h1>Booking Report & Analysis</h1>
                 <p class="muted">Generated at ${escapeHtml(generatedAt)}</p>
               </div>
@@ -287,7 +287,7 @@ const AdminBookingManagement = () => {
               <tbody>${statusRows}</tbody>
             </table>
 
-            <p class="footer">Smart Campus booking analytics report.</p>
+            <p class="footer">UniNex booking analytics report.</p>
           </main>
           <script>
             window.onload = function () {
@@ -549,3 +549,4 @@ const AdminBookingManagement = () => {
 };
 
 export default AdminBookingManagement;
+

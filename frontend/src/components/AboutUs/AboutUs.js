@@ -59,7 +59,7 @@ function AboutUs() {
                   Building a smarter campus experience
                 </h1>
                 <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
-                  Smart Campus brings students, technicians, and administrators into one digital workspace for campus services, resource management, and day-to-day operations.
+                  UniNex brings students, technicians, and administrators into one digital workspace for campus services, resource management, and day-to-day operations.
                 </p>
 
                 <div className="mt-auto grid gap-4 pt-10 sm:grid-cols-3">
@@ -93,7 +93,7 @@ function AboutUs() {
             <section className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
               <h2 className="text-3xl font-extrabold text-white">Why it matters</h2>
               <p className="mt-4 text-base leading-7 text-slate-300">
-                Campus teams need fast communication and dependable records. Smart Campus keeps each role focused on the work that matters most, while giving admins clearer oversight.
+                Campus teams need fast communication and dependable records. UniNex keeps each role focused on the work that matters most, while giving admins clearer oversight.
               </p>
             </section>
           </aside>
@@ -123,3 +123,4 @@ function AboutUs() {
 }
 
 export default AboutUs;
+
