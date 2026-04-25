@@ -507,6 +507,7 @@ const StudentResourceView = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      
       {/* Hero Header */}
       <div className="relative bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>

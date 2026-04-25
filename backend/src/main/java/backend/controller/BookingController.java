@@ -7,7 +7,9 @@ import backend.model.UserModel;
 import backend.repository.BookingRepository;
 import backend.repository.ResourceRepository;
 import backend.repository.ReviewRepository;
+import backend.repository.UserRepository;
 import backend.service.EmailNotificationService;
+import backend.service.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -47,17 +49,23 @@ public class BookingController {
     private final ResourceRepository resourceRepository;
     private final ReviewRepository reviewRepository;
     private final EmailNotificationService emailNotificationService;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     public BookingController(
             BookingRepository bookingRepository,
             ResourceRepository resourceRepository,
             ReviewRepository reviewRepository,
-            EmailNotificationService emailNotificationService
+            EmailNotificationService emailNotificationService,
+            NotificationService notificationService,
+            UserRepository userRepository
     ) {
         this.bookingRepository = bookingRepository;
         this.resourceRepository = resourceRepository;
         this.reviewRepository = reviewRepository;
         this.emailNotificationService = emailNotificationService;
+        this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping
@@ -108,7 +116,9 @@ public class BookingController {
         validateBooking(booking, null);
         ensureNoConflict(booking, null);
         booking.applyDefaults();
-        return bookingRepository.save(booking);
+        BookingModel savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingCreated(savedBooking, user);
+        return savedBooking;
     }
 
     @PatchMapping("/{id}/approve")
@@ -125,6 +135,7 @@ public class BookingController {
         applyVerificationDetails(booking);
         booking.applyDefaults();
         BookingModel savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingApproved(savedBooking, getRequester(savedBooking));
         return sendApprovalEmailAndRecord(savedBooking);
     }
 
@@ -157,7 +168,9 @@ public class BookingController {
         booking.setApproverId(admin.getId());
         booking.setApproverName(admin.getFullName());
         booking.applyDefaults();
-        return bookingRepository.save(booking);
+        BookingModel savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingRejected(savedBooking, getRequester(savedBooking), reason);
+        return savedBooking;
     }
 
     @PatchMapping("/{id}/cancel")
@@ -172,7 +185,9 @@ public class BookingController {
         booking.setStatus("CANCELLED");
         booking.setCancellationReason(body == null ? null : body.get("reason"));
         booking.applyDefaults();
-        return bookingRepository.save(booking);
+        BookingModel savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingCancelled(savedBooking, getRequester(savedBooking));
+        return savedBooking;
     }
 
     @PatchMapping("/{id}/reschedule")
@@ -183,6 +198,9 @@ public class BookingController {
         if ("CANCELLED".equals(booking.getStatus()) || "REJECTED".equals(booking.getStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cancelled or rejected bookings cannot be rescheduled");
         }
+
+        String oldDate = booking.getDate();
+        String oldTime = booking.getStartTime();
 
         booking.setDate(request.getDate());
         booking.setStartTime(request.getStartTime());
@@ -206,7 +224,9 @@ public class BookingController {
         validateBooking(booking, booking.getId());
         ensureNoConflict(booking, booking.getId());
         booking.applyDefaults();
-        return bookingRepository.save(booking);
+        BookingModel savedBooking = bookingRepository.save(booking);
+        notificationService.notifyBookingRescheduled(savedBooking, getRequester(savedBooking), oldDate, oldTime);
+        return savedBooking;
     }
 
     private BookingModel sendApprovalEmailAndRecord(BookingModel booking) {
@@ -406,5 +426,10 @@ public class BookingController {
         } catch (Exception exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid booking date or time for cancellation");
         }
+    }
+
+    private UserModel getRequester(BookingModel booking) {
+        return userRepository.findById(booking.getRequesterId())
+                .orElseThrow(() -> new UserNotFoundException("Requester not found"));
     }
 }

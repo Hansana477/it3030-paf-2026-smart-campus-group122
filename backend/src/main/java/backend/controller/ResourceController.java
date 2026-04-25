@@ -3,6 +3,7 @@ package backend.controller;
 import backend.exception.UserNotFoundException;
 import backend.model.ResourceModel;
 import backend.repository.ResourceRepository;
+import backend.service.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,9 +32,11 @@ import java.util.Map;
 public class ResourceController {
 
     private final ResourceRepository resourceRepository;
+    private final NotificationService notificationService;
 
-    public ResourceController(ResourceRepository resourceRepository) {
+    public ResourceController(ResourceRepository resourceRepository, NotificationService notificationService) {
         this.resourceRepository = resourceRepository;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -58,7 +61,9 @@ public class ResourceController {
         validateResource(resource);
         resource.setId(null);
         resource.applyDefaults();
-        return resourceRepository.save(resource);
+        ResourceModel savedResource = resourceRepository.save(resource);
+        notificationService.notifyResourceCreated(savedResource);
+        return savedResource;
     }
 
     @PutMapping("/{id}")

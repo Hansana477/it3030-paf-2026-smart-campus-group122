@@ -14,6 +14,7 @@ import backend.model.UserModel;
 import backend.repository.ResourceRepository;
 import backend.repository.TicketRepository;
 import backend.repository.UserRepository;
+import backend.service.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -77,15 +78,18 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final ResourceRepository resourceRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public TicketService(
             TicketRepository ticketRepository,
             ResourceRepository resourceRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            NotificationService notificationService
     ) {
         this.ticketRepository = ticketRepository;
         this.resourceRepository = resourceRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public TicketModel createTicket(
@@ -152,7 +156,9 @@ public class TicketService {
                 "Ticket created for resource " + safe(resource.getName()) + " with priority " + priority
         );
 
-        return ticketRepository.save(ticket);
+        TicketModel savedTicket = ticketRepository.save(ticket);
+        notificationService.notifyTicketCreated(savedTicket, actor);
+        return savedTicket;
     }
 
     public List<TicketModel> getVisibleTickets(
@@ -246,7 +252,13 @@ public class TicketService {
                 "Ticket assigned to technician " + safe(technician.getFullName())
         );
 
-        return ticketRepository.save(ticket);
+        TicketModel savedTicket = ticketRepository.save(ticket);
+        UserModel creator = userRepository.findById(savedTicket.getCreatedByUserId())
+                .orElse(null);
+        if (creator != null) {
+            notificationService.notifyTicketAssigned(savedTicket, creator, technician.getFullName());
+        }
+        return savedTicket;
     }
 
     public TicketModel updateStatus(String ticketId, UpdateTicketStatusRequest request, UserModel actor) {
@@ -322,7 +334,13 @@ public class TicketService {
                 "Status changed from " + currentStatus + " to " + targetStatus
         );
 
-        return ticketRepository.save(ticket);
+        TicketModel savedTicket = ticketRepository.save(ticket);
+        UserModel creator = userRepository.findById(savedTicket.getCreatedByUserId())
+                .orElse(null);
+        if (creator != null) {
+            notificationService.notifyTicketStatusChanged(savedTicket, creator, currentStatus);
+        }
+        return savedTicket;
     }
 
     public TicketModel confirmResolution(String ticketId, UserModel actor) {
@@ -354,7 +372,9 @@ public class TicketService {
                 "Student confirmed the fix and closed the ticket"
         );
 
-        return ticketRepository.save(ticket);
+        TicketModel savedTicket = ticketRepository.save(ticket);
+        notificationService.notifyTicketConfirmed(savedTicket, actor);
+        return savedTicket;
     }
 
     public TicketModel reopenTicket(String ticketId, ReopenTicketRequest request, UserModel actor) {
@@ -395,7 +415,9 @@ public class TicketService {
                 "Ticket reopened. Reason: " + reopenReason
         );
 
-        return ticketRepository.save(ticket);
+        TicketModel savedTicket = ticketRepository.save(ticket);
+        notificationService.notifyTicketReopened(savedTicket, actor);
+        return savedTicket;
     }
 
     public TicketModel addComment(String ticketId, AddCommentRequest request, UserModel actor) {

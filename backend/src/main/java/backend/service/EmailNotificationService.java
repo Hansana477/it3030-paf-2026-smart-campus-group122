@@ -272,6 +272,8 @@ public class EmailNotificationService {
             case "TECHNICIAN_PENDING" -> "Pending technician approval";
             default -> "General update";
         };
+    }
+
     private String urlEncode(String value) {
         return java.net.URLEncoder.encode(value == null ? "" : value, java.nio.charset.StandardCharsets.UTF_8);
     }
