@@ -70,6 +70,7 @@ function AdminDashboard() {
   const [isSavingUser, setIsSavingUser] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [selectedRoleFilter, setSelectedRoleFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -376,9 +377,11 @@ function AdminDashboard() {
   const technicianCount = allUsers.filter((existingUser) => existingUser.role === "TECHNICIAN").length;
   const adminCount = allUsers.filter((existingUser) => existingUser.role === "ADMIN").length;
   const activeUserCount = allUsers.filter((existingUser) => existingUser.active).length;
-  const filteredUsers = allUsers.filter((existingUser) =>
-    selectedRoleFilter === "ALL" ? true : existingUser.role === selectedRoleFilter
-  );
+  const filteredUsers = allUsers.filter((existingUser) => {
+    const matchesRole = selectedRoleFilter === "ALL" ? true : existingUser.role === selectedRoleFilter;
+    const matchesSearch = (existingUser.email || "").toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesRole && matchesSearch;
+  });
   const selectedFilterLabel = roleFilterOptions.find((option) => option.value === selectedRoleFilter)?.label ?? "All users";
 
   return (
@@ -524,6 +527,33 @@ function AdminDashboard() {
               >
                 Download {selectedFilterLabel} report
               </button>
+            </div>
+          </div>
+          
+          <div className="mt-6">
+            <div className="relative max-w-md">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Search by email..."
+                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50/80 text-base text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-primary"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 

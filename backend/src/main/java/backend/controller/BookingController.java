@@ -187,7 +187,7 @@ public class BookingController {
         booking.setCancellationReason(body == null ? null : body.get("reason"));
         booking.applyDefaults();
         BookingModel savedBooking = bookingRepository.save(booking);
-        notificationService.notifyBookingCancelled(savedBooking, getRequester(savedBooking));
+        notificationService.notifyBookingCancelled(savedBooking, getRequester(savedBooking), user);
         return savedBooking;
     }
 
@@ -229,7 +229,7 @@ public class BookingController {
         ensureNoConflict(booking, booking.getId());
         booking.applyDefaults();
         BookingModel savedBooking = bookingRepository.save(booking);
-        notificationService.notifyBookingRescheduled(savedBooking, getRequester(savedBooking), oldDate, oldTime);
+        notificationService.notifyBookingRescheduled(savedBooking, getRequester(savedBooking), oldDate, oldTime, user);
         return savedBooking;
     }
 

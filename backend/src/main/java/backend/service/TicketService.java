@@ -14,7 +14,6 @@ import backend.model.UserModel;
 import backend.repository.ResourceRepository;
 import backend.repository.TicketRepository;
 import backend.repository.UserRepository;
-import backend.service.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;

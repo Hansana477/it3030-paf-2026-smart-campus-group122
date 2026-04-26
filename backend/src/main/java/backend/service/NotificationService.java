@@ -115,15 +115,13 @@ public class NotificationService {
     }
 
     public void notifyAdminsOfPendingTechnician(UserModel technician) {
-        List<UserModel> admins = userRepository.findByRole("ADMIN");
-        for (UserModel admin : admins) {
-            createNotification(
-                    admin,
-                    "New technician approval needed",
-                    technician.getFullName() + " is waiting for admin approval as a technician.",
-                    "TECHNICIAN_PENDING"
-            );
-        }
+        notifyUsers(
+                activeAdmins(),
+                "New technician approval needed",
+                technician.getFullName() + " is waiting for admin approval as a technician.",
+                "TECHNICIAN_PENDING",
+                false
+        );
     }
 
     public void notifyTechnicianApproved(UserModel technician) {
@@ -170,16 +168,13 @@ public class NotificationService {
                 "BOOKING_CREATED"
         );
 
-        // Notify admins
-        List<UserModel> admins = userRepository.findByRole("ADMIN");
-        for (UserModel admin : admins) {
-            createNotification(
-                    admin,
-                    "New booking request",
-                    "A new booking request for " + booking.getResourceName() + " has been submitted by " + user.getFullName() + ".",
-                    "ADMIN_BOOKING_CREATED"
-            );
-        }
+        notifyUsers(
+                activeAdminsExcluding(user == null ? null : user.getId()),
+                "New booking request",
+                "A new booking request for " + booking.getResourceName() + " has been submitted by " + user.getFullName() + ".",
+                "ADMIN_BOOKING_CREATED",
+                false
+        );
     }
 
     public void notifyBookingApproved(BookingModel booking, UserModel user) {
@@ -200,7 +195,7 @@ public class NotificationService {
         );
     }
 
-    public void notifyBookingCancelled(BookingModel booking, UserModel user) {
+    public void notifyBookingCancelled(BookingModel booking, UserModel user, UserModel actor) {
         createNotification(
                 user,
                 "Booking cancelled",
@@ -208,19 +203,16 @@ public class NotificationService {
                 "BOOKING_CANCELLED"
         );
 
-        // Notify admins
-        List<UserModel> admins = userRepository.findByRole("ADMIN");
-        for (UserModel admin : admins) {
-            createNotification(
-                    admin,
-                    "Booking cancelled",
-                    "Booking for " + booking.getResourceName() + " on " + booking.getDate() + " has been cancelled by " + user.getFullName() + ".",
-                    "ADMIN_BOOKING_CANCELLED"
-            );
-        }
+        notifyUsers(
+                activeAdminsExcluding(actor == null ? null : actor.getId()),
+                "Booking cancelled",
+                "Booking for " + booking.getResourceName() + " on " + booking.getDate() + " has been cancelled by " + user.getFullName() + ".",
+                "ADMIN_BOOKING_CANCELLED",
+                false
+        );
     }
 
-    public void notifyBookingRescheduled(BookingModel booking, UserModel user, String oldDate, String oldTime) {
+    public void notifyBookingRescheduled(BookingModel booking, UserModel user, String oldDate, String oldTime, UserModel actor) {
         createNotification(
                 user,
                 "Booking rescheduled",
@@ -228,16 +220,13 @@ public class NotificationService {
                 "BOOKING_RESCHEDULED"
         );
 
-        // Notify admins
-        List<UserModel> admins = userRepository.findByRole("ADMIN");
-        for (UserModel admin : admins) {
-            createNotification(
-                    admin,
-                    "Booking rescheduled",
-                    "Booking for " + booking.getResourceName() + " has been rescheduled by " + user.getFullName() + " to " + booking.getDate() + ".",
-                    "ADMIN_BOOKING_RESCHEDULED"
-            );
-        }
+        notifyUsers(
+                activeAdminsExcluding(actor == null ? null : actor.getId()),
+                "Booking rescheduled",
+                "Booking for " + booking.getResourceName() + " has been rescheduled by " + user.getFullName() + " to " + booking.getDate() + ".",
+                "ADMIN_BOOKING_RESCHEDULED",
+                false
+        );
     }
 
     public void notifyTicketCreated(TicketModel ticket, UserModel user) {
@@ -248,16 +237,13 @@ public class NotificationService {
                 "TICKET_CREATED"
         );
 
-        // Notify admins
-        List<UserModel> admins = userRepository.findByRole("ADMIN");
-        for (UserModel admin : admins) {
-            createNotification(
-                    admin,
-                    "New support ticket: " + ticket.getTicketNumber(),
-                    "A new support ticket has been submitted by " + user.getFullName() + " for " + ticket.getResourceName() + ".",
-                    "ADMIN_TICKET_CREATED"
-            );
-        }
+        notifyUsers(
+                activeAdminsExcluding(user == null ? null : user.getId()),
+                "New support ticket: " + ticket.getTicketNumber(),
+                "A new support ticket has been submitted by " + user.getFullName() + " for " + ticket.getResourceName() + ".",
+                "ADMIN_TICKET_CREATED",
+                false
+        );
     }
 
     public void notifyTicketStatusChanged(TicketModel ticket, UserModel user, String oldStatus) {
@@ -287,52 +273,59 @@ public class NotificationService {
         );
     }
 
-    public void notifyTicketReopened(TicketModel ticket, UserModel student) {
-        // Notify admins
-        List<UserModel> admins = userRepository.findByRole("ADMIN");
-        for (UserModel admin : admins) {
-            createNotification(
-                    admin,
-                    "Ticket reopened: " + ticket.getTicketNumber(),
-                    "Ticket for " + ticket.getResourceName() + " has been reopened by " + student.getFullName() + ". Reason: " + ticket.getReopenReason(),
-                    "ADMIN_TICKET_REOPENED"
-            );
-        }
+    public void notifyTicketReopened(TicketModel ticket, UserModel actor) {
+        notifyUsers(
+                activeAdminsExcluding(actor == null ? null : actor.getId()),
+                "Ticket reopened: " + ticket.getTicketNumber(),
+                "Ticket for " + ticket.getResourceName() + " has been reopened by " + safeName(actor) + ". Reason: " + ticket.getReopenReason(),
+                "ADMIN_TICKET_REOPENED",
+                false
+        );
 
-        // Notify assigned technician if any
         if (ticket.getAssignedTechnicianId() != null) {
             userRepository.findById(ticket.getAssignedTechnicianId()).ifPresent(technician -> {
-                createNotification(
-                        technician,
-                        "Assigned ticket reopened: " + ticket.getTicketNumber(),
-                        "The ticket you were assigned for " + ticket.getResourceName() + " has been reopened by the student.",
-                        "TECHNICIAN_TICKET_REOPENED"
-                );
+                if (!sameUser(technician, actor)) {
+                    createNotification(
+                            technician,
+                            "Assigned ticket reopened: " + ticket.getTicketNumber(),
+                            "The ticket you were assigned for " + ticket.getResourceName() + " has been reopened by " + safeName(actor) + ".",
+                            "TECHNICIAN_TICKET_REOPENED"
+                    );
+                }
             });
         }
+
+        userRepository.findById(ticket.getCreatedByUserId()).ifPresent(creator -> {
+            if (!sameUser(creator, actor)) {
+                createNotification(
+                        creator,
+                        "Ticket reopened: " + ticket.getTicketNumber(),
+                        "Your ticket for " + ticket.getResourceName() + " has been reopened by " + safeName(actor) + ".",
+                        "TICKET_STATUS_CHANGED"
+                );
+            }
+        });
     }
 
     public void notifyTicketConfirmed(TicketModel ticket, UserModel student) {
-        // Notify admins
-        List<UserModel> admins = userRepository.findByRole("ADMIN");
-        for (UserModel admin : admins) {
-            createNotification(
-                    admin,
-                    "Ticket resolution confirmed: " + ticket.getTicketNumber(),
-                    "Student " + student.getFullName() + " has confirmed the resolution and closed the ticket for " + ticket.getResourceName() + ".",
-                    "ADMIN_TICKET_CONFIRMED"
-            );
-        }
+        notifyUsers(
+                activeAdminsExcluding(student == null ? null : student.getId()),
+                "Ticket resolution confirmed: " + ticket.getTicketNumber(),
+                "Student " + student.getFullName() + " has confirmed the resolution and closed the ticket for " + ticket.getResourceName() + ".",
+                "ADMIN_TICKET_CONFIRMED",
+                false
+        );
 
-        // Notify assigned technician if any
         if (ticket.getAssignedTechnicianId() != null) {
             userRepository.findById(ticket.getAssignedTechnicianId()).ifPresent(technician -> {
-                createNotification(
-                        technician,
-                        "Ticket resolution confirmed: " + ticket.getTicketNumber(),
-                        "The student has confirmed your fix and closed the ticket for " + ticket.getResourceName() + ".",
-                        "TECHNICIAN_TICKET_CONFIRMED"
-                );
+                if (!sameUser(technician, student)) {
+                    createNotification(
+                            technician,
+                            "Ticket resolution confirmed: " + ticket.getTicketNumber(),
+                            "The student has confirmed your fix and closed the ticket for " + ticket.getResourceName() + ".",
+                            "TECHNICIAN_TICKET_CONFIRMED"
+                    );
+                }
             });
         }
     }
@@ -366,7 +359,7 @@ public class NotificationService {
             });
         }
 
-        for (UserModel admin : userRepository.findByRole("ADMIN")) {
+        for (UserModel admin : activeAdminsExcluding(commenter == null ? null : commenter.getId())) {
             if (!sameUser(admin, commenter) && !notifiedUserIds.contains(admin.getId())) {
                 createSilentNotification(
                         admin,
@@ -378,38 +371,34 @@ public class NotificationService {
         }
     }
 
-    public void notifyResourceCreated(ResourceModel resource) {
-        List<UserModel> users = userRepository.findAll();
-        for (UserModel user : users) {
-            createSilentNotification(
-                    user,
-                    "New resource available!",
-                    "A new resource '" + resource.getName() + "' is now available at " + resource.getLocation() + ". Check it out!",
-                    "RESOURCE_CREATED"
-            );
-        }
+    public void notifyResourceCreated(ResourceModel resource, UserModel actor) {
+        notifyUsers(
+                activeAdminsExcluding(actor == null ? null : actor.getId()),
+                "New resource available!",
+                "A new resource '" + resource.getName() + "' was added at " + resource.getLocation() + ".",
+                "RESOURCE_CREATED",
+                true
+        );
     }
 
-    public void notifyResourceUpdated(ResourceModel resource) {
-        for (UserModel user : userRepository.findAll()) {
-            createSilentNotification(
-                    user,
-                    "Resource updated",
-                    "The resource '" + resource.getName() + "' was updated. Review the latest details before your next booking or support request.",
-                    "RESOURCE_UPDATED"
-            );
-        }
+    public void notifyResourceUpdated(ResourceModel resource, UserModel actor) {
+        notifyUsers(
+                activeAdminsExcluding(actor == null ? null : actor.getId()),
+                "Resource updated",
+                "The resource '" + resource.getName() + "' was updated. Review the latest details in resource management.",
+                "RESOURCE_UPDATED",
+                true
+        );
     }
 
-    public void notifyResourceDeleted(ResourceModel resource) {
-        for (UserModel user : userRepository.findAll()) {
-            createSilentNotification(
-                    user,
-                    "Resource removed",
-                    "The resource '" + resource.getName() + "' is no longer available in UniNex.",
-                    "RESOURCE_DELETED"
-            );
-        }
+    public void notifyResourceDeleted(ResourceModel resource, UserModel actor) {
+        notifyUsers(
+                activeAdminsExcluding(actor == null ? null : actor.getId()),
+                "Resource removed",
+                "The resource '" + resource.getName() + "' was removed from UniNex.",
+                "RESOURCE_DELETED",
+                true
+        );
     }
 
     private void broadcastNotificationCreated(NotificationModel notification) {
@@ -491,6 +480,55 @@ public class NotificationService {
         return user == null || user.getFullName() == null || user.getFullName().isBlank()
                 ? "Someone"
                 : user.getFullName();
+    }
+
+    private void notifyUsers(List<UserModel> recipients, String title, String message, String type, boolean silent) {
+        if (recipients == null || recipients.isEmpty()) {
+            return;
+        }
+
+        Set<String> notifiedUserIds = new HashSet<>();
+        for (UserModel recipient : recipients) {
+            if (!shouldReceiveNotification(recipient) || recipient.getId() == null || !notifiedUserIds.add(recipient.getId())) {
+                continue;
+            }
+
+            if (silent) {
+                createSilentNotification(recipient, title, message, type);
+            } else {
+                createNotification(recipient, title, message, type);
+            }
+        }
+    }
+
+    private List<UserModel> activeAdmins() {
+        return userRepository.findByRole("ADMIN")
+                .stream()
+                .filter(this::shouldReceiveNotification)
+                .toList();
+    }
+
+    private List<UserModel> activeAdminsExcluding(String excludedUserId) {
+        return activeAdmins()
+                .stream()
+                .filter(user -> excludedUserId == null || !excludedUserId.equals(user.getId()))
+                .toList();
+    }
+
+    private List<UserModel> activeNonAdminUsers() {
+        return userRepository.findAll()
+                .stream()
+                .filter(this::shouldReceiveNotification)
+                .filter(user -> !"ADMIN".equals(user.getRole()))
+                .toList();
+    }
+
+    private boolean shouldReceiveNotification(UserModel user) {
+        if (user == null || user.getId() == null || !user.isActive()) {
+            return false;
+        }
+
+        return !"TECHNICIAN".equals(user.getRole()) || user.isApproved();
     }
 }
 

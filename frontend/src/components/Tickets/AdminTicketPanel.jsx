@@ -274,17 +274,17 @@ function AdminTicketPanel({ technicians = [] }) {
 
   return (
     <>
-      <section className="rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+      <section className="rounded-[30px] border border-white/10 bg-primary p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur sm:p-8">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent">SERVICE DESK</p>
-          <h2 className="mt-3 text-3xl font-extrabold text-primary">Admin Ticket Control Center</h2>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-500">
+          <h2 className="mt-3 text-3xl font-extrabold text-white">Admin Ticket Control Center</h2>
+          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
             Monitor all maintenance incidents, assign technicians, reject invalid requests, close resolved work, and review comment activity.
           </p>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-4">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5">
             <p className="text-sm text-slate-400">All Tickets</p>
             <p className="mt-2 text-3xl font-extrabold text-primary">{summary.all}</p>
           </div>
@@ -303,7 +303,7 @@ function AdminTicketPanel({ technicians = [] }) {
         </div>
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-          <div className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+          <div className="rounded-[28px] border border-slate-100 bg-slate-50/90 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-lg font-extrabold text-primary">All Incident Tickets</h3>
 
@@ -341,14 +341,14 @@ function AdminTicketPanel({ technicians = [] }) {
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search tickets..."
-                  className="w-full rounded-3xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+                  className="w-full rounded-3xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-primary placeholder:text-slate-400 outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
                 />
               </div>
 
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
+                className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-primary outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="OPEN">OPEN</option>
@@ -416,7 +416,7 @@ function AdminTicketPanel({ technicians = [] }) {
             </div>
           </div>
 
-          <section className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+          <section className="rounded-[28px] border border-slate-100 bg-slate-50/90 p-5">
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-accent" />
               <h3 className="text-lg font-extrabold text-primary">Technician Workload</h3>

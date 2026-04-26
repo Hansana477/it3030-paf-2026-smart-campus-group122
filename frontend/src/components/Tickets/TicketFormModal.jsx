@@ -17,6 +17,11 @@ const CATEGORY_OPTIONS = [
 
 const PRIORITY_OPTIONS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
+const phonePattern = /^(0\d{9}|\+94\d{9})$/;
+const phoneHelpText = "Contact phone must be in 07XXXXXXXX or +947XXXXXXXX format.";
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailHelpText = "Please enter a valid email address.";
+
 function createInitialForm(user) {
   return {
     resourceId: "",
@@ -103,8 +108,21 @@ function TicketFormModal({ open, onClose, currentUser, onTicketCreated }) {
       return;
     }
 
-    if (!formData.preferredContactEmail.trim() && !formData.preferredContactPhone.trim()) {
+    const trimmedEmail = formData.preferredContactEmail.trim();
+    const trimmedPhone = formData.preferredContactPhone.trim();
+
+    if (!trimmedEmail && !trimmedPhone) {
       setError("Please provide at least one contact detail.");
+      return;
+    }
+
+    if (trimmedEmail && !emailPattern.test(trimmedEmail)) {
+      setError(emailHelpText);
+      return;
+    }
+
+    if (trimmedPhone && !phonePattern.test(trimmedPhone)) {
+      setError(phoneHelpText);
       return;
     }
 
@@ -115,8 +133,8 @@ function TicketFormModal({ open, onClose, currentUser, onTicketCreated }) {
         ...formData,
         description: formData.description.trim(),
         preferredContactName: formData.preferredContactName.trim(),
-        preferredContactEmail: formData.preferredContactEmail.trim(),
-        preferredContactPhone: formData.preferredContactPhone.trim(),
+        preferredContactEmail: trimmedEmail,
+        preferredContactPhone: trimmedPhone,
       }, images);
 
       onTicketCreated(created);

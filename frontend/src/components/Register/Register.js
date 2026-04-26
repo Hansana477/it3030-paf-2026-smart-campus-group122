@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import signImage from "../../assets/images/sign.jpg";
 
 const initialForm = {
@@ -63,6 +63,7 @@ function toStoredPhone(phone) {
 }
 
 function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState(initialForm);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -147,6 +148,9 @@ function Register() {
         setSuccessMessage(`User registered successfully with ID ${data.id}.`);
       }
       setFormData(initialForm);
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
     } catch (submitError) {
       setError(submitError.message || "Something went wrong.");
     } finally {
@@ -199,12 +203,12 @@ function Register() {
 
         <section className="relative flex flex-col px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
           <div className="flex items-center justify-between shrink-0">
-            <p className="text-xl font-black tracking-tight text-slate-900">SMARTCAMPUS</p>
+            <p className="text-xl font-black tracking-tight text-slate-900">UNINEX</p>
           </div>
 
           <div className="my-auto pt-8 pb-4 text-center">
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Create Account</h1>
-            <p className="mt-2 text-sm font-medium text-slate-500">Join the SMARTCAMPUS platform</p>
+            <p className="mt-2 text-sm font-medium text-slate-500">Join the UniNex platform</p>
 
             <form className="mx-auto mt-8 w-full max-w-sm grid gap-5 text-left" onSubmit={handleSubmit}>
               <div className="grid gap-2 sm:grid-cols-2" aria-label="Select account role">
