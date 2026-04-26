@@ -14,10 +14,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Set<String> PUBLIC_POST_PATHS = Set.of(
+            "/users",
+            "/users/login",
+            "/users/verify-login-otp",
+            "/users/google",
+            "/users/forgot-password",
+            "/users/reset-password"
+    );
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -25,6 +35,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+        return "POST".equalsIgnoreCase(request.getMethod())
+                && PUBLIC_POST_PATHS.contains(request.getServletPath());
     }
 
     @Override

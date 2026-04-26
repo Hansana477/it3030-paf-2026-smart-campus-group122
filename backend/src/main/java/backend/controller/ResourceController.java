@@ -3,6 +3,7 @@ package backend.controller;
 import backend.exception.UserNotFoundException;
 import backend.model.ResourceModel;
 import backend.repository.ResourceRepository;
+import backend.service.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,14 +22,21 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
+@CrossOrigin(origins = {
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001"
+})
 @RequestMapping("/resources")
 public class ResourceController {
 
     private final ResourceRepository resourceRepository;
+    private final NotificationService notificationService;
 
-    public ResourceController(ResourceRepository resourceRepository) {
+    public ResourceController(ResourceRepository resourceRepository, NotificationService notificationService) {
         this.resourceRepository = resourceRepository;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -53,7 +61,9 @@ public class ResourceController {
         validateResource(resource);
         resource.setId(null);
         resource.applyDefaults();
-        return resourceRepository.save(resource);
+        ResourceModel savedResource = resourceRepository.save(resource);
+        notificationService.notifyResourceCreated(savedResource);
+        return savedResource;
     }
 
     @PutMapping("/{id}")
@@ -66,7 +76,9 @@ public class ResourceController {
         validateResource(updatedResource);
         updatedResource.setId(id);
         updatedResource.applyDefaults();
-        return resourceRepository.save(updatedResource);
+        ResourceModel savedResource = resourceRepository.save(updatedResource);
+        notificationService.notifyResourceUpdated(savedResource);
+        return savedResource;
     }
 
     @DeleteMapping("/{id}")
@@ -75,6 +87,7 @@ public class ResourceController {
                 .orElseThrow(() -> new UserNotFoundException("Could not find resource with id " + id));
 
         resourceRepository.delete(resource);
+        notificationService.notifyResourceDeleted(resource);
         return Map.of("message", "Resource deleted successfully");
     }
 
@@ -82,6 +95,12 @@ public class ResourceController {
         if (resource.getType() != null && "EQUIPMENT".equalsIgnoreCase(resource.getType())) {
             resource.setCapacity(1);
             resource.setSeatingLayout(null);
+            return;
+        }
+
+        if (resource.getSeatingLayout() != null && resource.getSeatingLayout().getSeats() != null
+                && !resource.getSeatingLayout().getSeats().isEmpty()) {
+            resource.setCapacity(resource.getSeatingLayout().getSeats().size());
         }
     }
 

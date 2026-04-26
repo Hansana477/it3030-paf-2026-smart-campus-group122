@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
   Clock, 
@@ -47,8 +48,10 @@ const AMENITY_ICONS = {
 };
 
 const API_BASE_URL = 'http://localhost:8082';
+const RESOURCE_REFRESH_INTERVAL_MS = 5000;
 
 const StudentResourceView = () => {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [selectedResource, setSelectedResource] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -62,32 +65,69 @@ const StudentResourceView = () => {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationType, setNotificationType] = useState('success');
+  const [bookingResource, setBookingResource] = useState(null);
+  const [bookingDate, setBookingDate] = useState('');
+  const [selectedSeatIds, setSelectedSeatIds] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [bookingPurpose, setBookingPurpose] = useState('');
+  const [acceptedBookingPolicy, setAcceptedBookingPolicy] = useState(false);
+  const [resourceBookings, setResourceBookings] = useState([]);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [selectedResourceReviews, setSelectedResourceReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
   useEffect(() => {
-    const loadResources = async () => {
-      setLoading(true);
+    let isMounted = true;
+
+    const syncResources = async (showInitialLoading = false) => {
+      if (showInitialLoading) {
+        setLoading(true);
+      }
+
       try {
-        const response = await fetch(`${API_BASE_URL}/resources?status=ACTIVE`);
+        const response = await fetch(`${API_BASE_URL}/resources`);
         const data = await response.json().catch(() => []);
 
         if (!response.ok) {
           throw new Error(data?.message || data?.error || 'Failed to load resources');
         }
 
-        setResources(Array.isArray(data) ? data : []);
+        if (!isMounted) return;
+
+        const nextResources = Array.isArray(data) ? data : [];
+        setResources(nextResources);
+        setSelectedResource(current => {
+          if (!current) return current;
+          return nextResources.find(resource => resource.id === current.id) || current;
+        });
       } catch (error) {
-        showNotificationMessage(error.message || 'Failed to load resources', 'error');
-        setResources([]);
+        if (!isMounted) return;
+        if (showInitialLoading) {
+          showNotificationMessage(error.message || 'Failed to load resources', 'error');
+          setResources([]);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted && showInitialLoading) {
+          setLoading(false);
+        }
       }
     };
 
-    loadResources();
+    syncResources(true);
+    const refreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncResources(false);
+      }
+    }, RESOURCE_REFRESH_INTERVAL_MS);
+
+    return () => {
+      isMounted = false;
+      clearInterval(refreshTimer);
+    };
   }, []);
 
   // Get unique amenities for filter
@@ -100,8 +140,7 @@ const StudentResourceView = () => {
                           (resource.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'ALL' || resource.type === selectedType;
     const matchesAmenity = selectedAmenity === 'ALL' || (resource.amenities || []).includes(selectedAmenity);
-    const matchesStatus = resource.status === 'ACTIVE'; // Only show active resources to students
-    return matchesSearch && matchesType && matchesAmenity && matchesStatus;
+    return matchesSearch && matchesType && matchesAmenity;
   });
 
   // Pagination
@@ -123,10 +162,24 @@ const StudentResourceView = () => {
     setTimeout(() => setShowNotification(false), 3000);
   };
 
-  const handleViewDetails = (resource) => {
+  const handleViewDetails = async (resource) => {
     setSelectedResource(resource);
     setSelectedImageIndex(0);
     setShowDetailsModal(true);
+    setSelectedResourceReviews([]);
+    setReviewsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/reviews/resource/${resource.id}`);
+      const data = await response.json().catch(() => []);
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Failed to load reviews');
+      }
+      setSelectedResourceReviews(Array.isArray(data) ? data : []);
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to load reviews', 'error');
+    } finally {
+      setReviewsLoading(false);
+    }
   };
 
   const showPreviousImage = () => {
@@ -185,8 +238,6 @@ const StudentResourceView = () => {
     return Math.round((occupied / total) * 100);
   };
 
-  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const today = new Date().getDay();
   const getDateKey = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -202,17 +253,301 @@ const StudentResourceView = () => {
       year: 'numeric',
     });
   };
+
+  const openBookingModal = (resource) => {
+    if (resource.status !== 'ACTIVE') {
+      showNotificationMessage('This resource is not available for booking right now', 'error');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    let user = null;
+
+    if (storedUser) {
+      try {
+        user = JSON.parse(storedUser);
+      } catch (error) {
+        user = null;
+      }
+    }
+
+    if (!token || user?.role !== 'STUDENT') {
+      navigate('/login', { state: { from: { pathname: '/resources' } } });
+      return;
+    }
+
+    setBookingResource(resource);
+    setBookingDate(getNextAvailableDate(resource) || todayDate);
+    setSelectedSeatIds([]);
+    setSelectedSlot(null);
+    setBookingPurpose('');
+    setAcceptedBookingPolicy(false);
+    setResourceBookings([]);
+  };
+
+  const closeBookingModal = () => {
+    setBookingResource(null);
+    setBookingDate('');
+    setSelectedSeatIds([]);
+    setSelectedSlot(null);
+    setBookingPurpose('');
+    setAcceptedBookingPolicy(false);
+    setResourceBookings([]);
+  };
+  const getAvailabilityDateRange = (window) => {
+    const startDate = window.startDate || window.date;
+    const endDate = window.endDate || window.date;
+    if (!startDate && !endDate) return null;
+    if (startDate && endDate && startDate !== endDate) {
+      return `${formatAvailabilityDate(startDate)} - ${formatAvailabilityDate(endDate)}`;
+    }
+    return formatAvailabilityDate(startDate || endDate);
+  };
+  const isTodayInAvailabilityWindow = (window) => {
+    const startDate = window.startDate || window.date;
+    const endDate = window.endDate || window.date;
+    const matchesDate = (!startDate || todayDate >= startDate) && (!endDate || todayDate <= endDate);
+    return matchesDate;
+  };
   const getTodayHours = (availabilityWindows) => {
-    const todayWindow = availabilityWindows?.find(w => w.date === todayDate) ||
-                        availabilityWindows?.find(w => !w.date && w.dayOfWeek === today);
+    const todayWindow = availabilityWindows?.find(isTodayInAvailabilityWindow);
     if (todayWindow) {
       return `${todayWindow.startTime} - ${todayWindow.endTime}`;
     }
     return 'Closed';
   };
+  const isResourceBookable = (resource) => resource?.status === 'ACTIVE';
+  const getResourceStatusLabel = (status) => {
+    if (!status) return 'Unavailable';
+    return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+  };
+  const getResourceStatusClasses = (status) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-emerald-100 text-emerald-700';
+      case 'MAINTENANCE': return 'bg-amber-100 text-amber-700';
+      case 'OUT_OF_SERVICE': return 'bg-red-100 text-red-700';
+      default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+  const addMinutesToTime = (time, minutes) => {
+    const [hours, mins] = time.split(':').map(Number);
+    const date = new Date(2000, 0, 1, hours, mins + minutes);
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  };
+  const toMinutes = (time) => {
+    const [hours, mins] = time.split(':').map(Number);
+    return hours * 60 + mins;
+  };
+  const isPastSlot = (date, slot) => {
+    if (!date || !slot) return false;
+    const now = new Date();
+    const slotStart = new Date(`${date}T${slot.startTime}:00`);
+    return slotStart <= now;
+  };
+  const getAvailabilityForDate = (resource, date) => {
+    if (!resource || !date) return null;
+    return resource.availabilityWindows?.find(window => {
+      const startDate = window.startDate || window.date;
+      const endDate = window.endDate || window.date;
+      const matchesDate = (!startDate || date >= startDate) && (!endDate || date <= endDate);
+      return matchesDate;
+    }) || null;
+  };
+  const getNextAvailableDate = (resource) => {
+    if (!resource?.availabilityWindows?.length) return '';
+    const start = new Date(`${todayDate}T00:00:00`);
+    for (let offset = 0; offset < 60; offset++) {
+      const candidate = new Date(start);
+      candidate.setDate(start.getDate() + offset);
+      const dateKey = getDateKey(candidate);
+      if (getAvailabilityForDate(resource, dateKey)) {
+        return dateKey;
+      }
+    }
+    return '';
+  };
+  const getBookingSlots = (resource, date) => {
+    const window = getAvailabilityForDate(resource, date);
+    if (!window) return [];
+    const slots = [];
+    let current = window.startTime;
+    while (toMinutes(current) < toMinutes(window.endTime)) {
+      const next = toMinutes(addMinutesToTime(current, 120)) < toMinutes(window.endTime)
+        ? addMinutesToTime(current, 120)
+        : window.endTime;
+      slots.push({ startTime: current, endTime: next });
+      current = next;
+    }
+    return slots;
+  };
+  const isSlotBookedForSeat = (seatId, slot) => {
+    return resourceBookings.some(booking => {
+      if (!['PENDING', 'APPROVED'].includes(booking.status)) return false;
+      if (!booking.seatIds?.includes(seatId)) return false;
+      return toMinutes(slot.startTime) < toMinutes(booking.endTime) && toMinutes(slot.endTime) > toMinutes(booking.startTime);
+    });
+  };
+  const getSlotBookingStatus = (seatId, slot) => {
+    const matchingBookings = resourceBookings.filter(booking => {
+      if (!['PENDING', 'APPROVED'].includes(booking.status)) return false;
+      if (!booking.seatIds?.includes(seatId)) return false;
+      return toMinutes(slot.startTime) < toMinutes(booking.endTime) && toMinutes(slot.endTime) > toMinutes(booking.startTime);
+    });
+    if (matchingBookings.some(booking => booking.status === 'APPROVED')) return 'APPROVED';
+    if (matchingBookings.some(booking => booking.status === 'PENDING')) return 'PENDING';
+    return null;
+  };
+  const getSlotStateClasses = (slotStatus, selected, past) => {
+    if (past) {
+      return 'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed';
+    }
+    if (slotStatus === 'APPROVED') {
+      return 'border border-red-200 bg-red-100 text-red-700 cursor-not-allowed';
+    }
+    if (slotStatus === 'PENDING') {
+      return 'border border-amber-200 bg-amber-100 text-amber-700 cursor-not-allowed';
+    }
+    if (selected) {
+      return 'bg-primary text-white';
+    }
+    return 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
+  };
+  const getSeatStateClasses = (seat, isSelected) => {
+    if (seat.status && seat.status !== 'AVAILABLE') {
+      return 'border-slate-200 bg-white text-slate-500 cursor-not-allowed';
+    }
+    if (isSelected) {
+      return 'border-slate-200 bg-white text-slate-700 shadow-sm';
+    }
+    return 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50';
+  };
+  const getSeatIconClasses = (seat, isSelected) => {
+    if (seat.status && seat.status !== 'AVAILABLE') return 'text-slate-400';
+    if (isSelected) return 'text-emerald-600';
+    return 'text-slate-500';
+  };
+  const formatSeatType = (type) => {
+    if (!type) return 'Standard';
+    return type.toLowerCase().split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  };
+  const getSeatFeatureLabel = (seat) => {
+    const features = [];
+    if (seat.hasPower) features.push('Power point');
+    if (seat.hasUsb) features.push('USB port');
+    if (seat.isAccessible || seat.accessible) features.push('Accessible');
+    return features.length ? features.join(' • ') : 'No extras';
+  };
+  const renderStars = (rating, sizeClass = 'h-4 w-4') => {
+    return [1, 2, 3, 4, 5].map(value => (
+      <Star
+        key={value}
+        className={`${sizeClass} ${value <= Math.round(Number(rating) || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`}
+      />
+    ));
+  };
+  const toggleSeatSelection = (seat) => {
+    if (seat.status && seat.status !== 'AVAILABLE') {
+      showNotificationMessage('This seat is not available', 'error');
+      return;
+    }
+    setSelectedSlot(null);
+    setSelectedSeatIds(current => {
+      if (current.includes(seat.id)) {
+        return current.filter(id => id !== seat.id);
+      }
+      if (current.length >= 4) {
+        showNotificationMessage('You can select maximum 4 seats for one booking', 'error');
+        return current;
+      }
+      return [...current, seat.id];
+    });
+  };
+
+  useEffect(() => {
+    const loadBookings = async () => {
+      if (!bookingResource || !bookingDate) return;
+      const token = localStorage.getItem('token');
+      try {
+        const response = await fetch(`${API_BASE_URL}/bookings/resource/${bookingResource.id}?date=${bookingDate}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok) {
+          throw new Error(data?.message || data?.error || 'Failed to load bookings');
+        }
+        setResourceBookings(Array.isArray(data) ? data : []);
+      } catch (error) {
+        showNotificationMessage(error.message || 'Failed to load bookings', 'error');
+      }
+    };
+
+    loadBookings();
+  }, [bookingResource, bookingDate]);
+
+  const submitBookingRequest = async () => {
+    if (!isResourceBookable(bookingResource)) {
+      showNotificationMessage('This resource is not available for booking right now', 'error');
+      return;
+    }
+    if (!bookingResource || !bookingDate || !selectedSlot || !bookingPurpose.trim()) {
+      showNotificationMessage('Select date, seats, time slot, and purpose', 'error');
+      return;
+    }
+    if (selectedSeatIds.length < 1 || selectedSeatIds.length > 4) {
+      showNotificationMessage('Select 1 to 4 seats', 'error');
+      return;
+    }
+    if (!acceptedBookingPolicy) {
+      showNotificationMessage('Please agree to the cancellation policy before booking', 'error');
+      return;
+    }
+    if (selectedSeatIds.some(seatId => isSlotBookedForSeat(seatId, selectedSlot))) {
+      showNotificationMessage('Selected slot is no longer available for one or more seats', 'error');
+      return;
+    }
+    if (isPastSlot(bookingDate, selectedSlot)) {
+      showNotificationMessage('This time slot has already started. Please choose another slot', 'error');
+      return;
+    }
+
+    const selectedSeats = bookingResource.seatingLayout?.seats.filter(seat => selectedSeatIds.includes(seat.id)) || [];
+    const token = localStorage.getItem('token');
+    setBookingLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          resourceId: bookingResource.id,
+          date: bookingDate,
+          startTime: selectedSlot.startTime,
+          endTime: selectedSlot.endTime,
+          purpose: bookingPurpose.trim(),
+          expectedAttendees: selectedSeats.length,
+          seatIds: selectedSeats.map(seat => seat.id),
+          seatNumbers: selectedSeats.map(seat => seat.number),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Failed to create booking request');
+      }
+      showNotificationMessage('Booking request created. Status: PENDING', 'success');
+      closeBookingModal();
+    } catch (error) {
+      showNotificationMessage(error.message || 'Failed to create booking request', 'error');
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      
       {/* Hero Header */}
       <div className="relative bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
@@ -220,7 +555,7 @@ const StudentResourceView = () => {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
               <Building className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm">Smart Campus Resources</span>
+              <span className="text-sm">UniNex Resources</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Find Your Perfect Study Space
@@ -366,6 +701,10 @@ const StudentResourceView = () => {
                 getAvailableSeatsCount={getAvailableSeatsCount}
                 getOccupancyRate={getOccupancyRate}
                 getTodayHours={getTodayHours}
+                isResourceBookable={isResourceBookable}
+                getResourceStatusLabel={getResourceStatusLabel}
+                getResourceStatusClasses={getResourceStatusClasses}
+                onBook={() => openBookingModal(resource)}
               />
             ))}
           </div>
@@ -382,6 +721,10 @@ const StudentResourceView = () => {
                 getResourceTypeColor={getResourceTypeColor}
                 getAvailableSeatsCount={getAvailableSeatsCount}
                 getTodayHours={getTodayHours}
+                isResourceBookable={isResourceBookable}
+                getResourceStatusLabel={getResourceStatusLabel}
+                getResourceStatusClasses={getResourceStatusClasses}
+                onBook={() => openBookingModal(resource)}
               />
             ))}
           </div>
@@ -438,7 +781,12 @@ const StudentResourceView = () => {
                 <div className={`p-2 rounded-lg ${getResourceTypeColor(selectedResource.type)}`}>
                   {getResourceTypeIcon(selectedResource.type)}
                 </div>
-                <h3 className="text-xl font-bold text-slate-800">{selectedResource.name}</h3>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">{selectedResource.name}</h3>
+                  <span className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-bold ${getResourceStatusClasses(selectedResource.status)}`}>
+                    {getResourceStatusLabel(selectedResource.status)}
+                  </span>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
@@ -524,6 +872,11 @@ const StudentResourceView = () => {
               <div className="mb-6">
                 <h4 className="font-semibold text-slate-800 mb-2">Description</h4>
                 <p className="text-slate-600">{selectedResource.description}</p>
+                {!isResourceBookable(selectedResource) && (
+                  <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                    This resource is currently {getResourceStatusLabel(selectedResource.status).toLowerCase()} and cannot be booked.
+                  </p>
+                )}
               </div>
               
               {/* Details Grid */}
@@ -587,15 +940,14 @@ const StudentResourceView = () => {
               <div className="mb-6">
                 <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  Weekly Schedule
+                  Availability Schedule
                 </h4>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {selectedResource.availabilityWindows?.map((window, idx) => (
                       <div key={idx} className="flex flex-col gap-1 p-2 bg-white rounded-lg border border-slate-200">
-                        <span className="text-sm font-medium text-slate-700">{daysOfWeek[window.dayOfWeek]}</span>
-                        {window.date && (
-                          <span className="text-xs text-slate-400">{formatAvailabilityDate(window.date)}</span>
+                        {getAvailabilityDateRange(window) && (
+                          <span className="text-xs text-slate-400">{getAvailabilityDateRange(window)}</span>
                         )}
                         <span className="text-sm text-slate-500">{window.startTime} - {window.endTime}</span>
                       </div>
@@ -642,6 +994,45 @@ const StudentResourceView = () => {
                   </div>
                 </div>
               )}
+
+              <div className="mb-6">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <h4 className="font-semibold text-slate-800">Student Reviews</h4>
+                  <div className="flex items-center gap-2 rounded-full bg-yellow-50 px-3 py-1.5 text-sm font-semibold text-slate-700">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    {Number(selectedResource.rating || 0).toFixed(1)} / 5
+                    <span className="text-slate-400">({selectedResource.reviews || 0})</span>
+                  </div>
+                </div>
+
+                {reviewsLoading ? (
+                  <p className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading reviews...
+                  </p>
+                ) : selectedResourceReviews.length === 0 ? (
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    No reviews yet for this resource.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedResourceReviews.map(review => (
+                      <div key={review.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-slate-800">{review.studentName || 'Student'}</p>
+                            <div className="mt-1 flex items-center gap-1">{renderStars(review.rating)}</div>
+                          </div>
+                          <span className="text-xs text-slate-400">
+                            {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
+                          </span>
+                        </div>
+                        {review.comment && <p className="mt-3 text-sm leading-6 text-slate-600">{review.comment}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="border-t border-slate-200 px-6 py-4 flex gap-3 justify-end bg-slate-50">
@@ -652,10 +1043,191 @@ const StudentResourceView = () => {
                 Close
               </button>
               <button
-                className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  openBookingModal(selectedResource);
+                }}
+                disabled={!isResourceBookable(selectedResource)}
+                className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
               >
                 <Calendar className="w-4 h-4" />
-                Book Now
+                {isResourceBookable(selectedResource) ? 'Book Now' : 'Not Available'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bookingResource && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900">Make Booking</h3>
+                <p className="text-sm text-slate-500">{bookingResource.name} • {bookingResource.location}</p>
+              </div>
+              <button onClick={closeBookingModal} className="p-2 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Select Date</label>
+                  <input
+                    type="date"
+                    min={todayDate}
+                    value={bookingDate}
+                    onChange={(event) => {
+                      setBookingDate(event.target.value);
+                      setSelectedSeatIds([]);
+                      setSelectedSlot(null);
+                    }}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Purpose</label>
+                  <input
+                    type="text"
+                    value={bookingPurpose}
+                    onChange={(event) => setBookingPurpose(event.target.value)}
+                    placeholder="Study session, project discussion..."
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {bookingDate && !getAvailabilityForDate(bookingResource, bookingDate) && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  This resource has no availability window for the selected date. Choose a date inside the configured availability range.
+                </p>
+              )}
+
+              {bookingDate && getAvailabilityForDate(bookingResource, bookingDate) && bookingResource.seatingLayout && (
+                <>
+                  <div>
+                    <div className="flex items-center justify-between gap-4 mb-3">
+                      <h4 className="font-semibold text-slate-800">Select 1 to 4 Seats</h4>
+                      <span className="text-sm text-slate-500">{selectedSeatIds.length}/4 selected</span>
+                    </div>
+                    <div className="mb-3 flex flex-wrap gap-3 text-xs text-slate-600">
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-500" /> Available</span>
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-emerald-600" /> Selected</span>
+                      <span className="inline-flex items-center gap-1"><Armchair className="h-4 w-4 text-slate-400" /> Unavailable</span>
+                      <span className="inline-flex items-center gap-1"><Zap className="h-4 w-4 text-yellow-500" /> Power point</span>
+                      <span className="inline-flex items-center gap-1"><Monitor className="h-4 w-4 text-blue-500" /> USB port</span>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div
+                        className="grid gap-2 min-w-max"
+                        style={{ gridTemplateColumns: `repeat(${bookingResource.seatingLayout.cols}, 76px)` }}
+                      >
+                        {bookingResource.seatingLayout.seats.map(seat => {
+                          const isSelected = selectedSeatIds.includes(seat.id);
+                          const disabled = seat.status && seat.status !== 'AVAILABLE';
+                          return (
+                            <button
+                              key={seat.id}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => toggleSeatSelection(seat)}
+                              title={
+                                seat.status && seat.status !== 'AVAILABLE'
+                                  ? `Seat ${seat.number} is ${seat.status.toLowerCase()}`
+                                  : `Seat ${seat.number} is available. Booked times are shown below after selection.`
+                              }
+                              className={`flex h-[72px] flex-col items-center justify-center rounded-lg border px-1 text-center text-xs font-semibold transition disabled:opacity-100 ${getSeatStateClasses(seat, isSelected)}`}
+                            >
+                              <Armchair className={`h-5 w-5 ${getSeatIconClasses(seat, isSelected)}`} />
+                              <span>{seat.number}</span>
+                              <span className="mt-0.5 max-w-full truncate text-[10px] font-medium opacity-75">{formatSeatType(seat.type)}</span>
+                              <span className="mt-0.5 flex gap-1">
+                                {seat.hasPower && <Zap className="h-3 w-3 text-yellow-500" />}
+                                {seat.hasUsb && <Monitor className="h-3 w-3 text-blue-500" />}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedSeatIds.length > 0 && (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {selectedSeatIds.map(seatId => {
+                        const seat = bookingResource.seatingLayout.seats.find(item => item.id === seatId);
+                        return (
+                          <div key={seatId} className="rounded-xl border border-slate-200 bg-white p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <h5 className="inline-flex items-center gap-2 font-semibold text-slate-800">
+                                <Armchair className="h-5 w-5 text-emerald-600" />
+                                Seat {seat?.number}
+                              </h5>
+                              <p className="text-xs text-slate-500">{formatSeatType(seat?.type)} • {getSeatFeatureLabel(seat || {})}</p>
+                              <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">Available</span>
+                                <span className="rounded bg-primary px-2 py-1 text-white">Selected</span>
+                                <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">Pending</span>
+                                <span className="rounded bg-red-100 px-2 py-1 text-red-700">Booked</span>
+                                <span className="rounded bg-slate-100 px-2 py-1 text-slate-400">Started/Past</span>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {getBookingSlots(bookingResource, bookingDate).map(slot => {
+                                const slotStatus = getSlotBookingStatus(seatId, slot);
+                                const past = isPastSlot(bookingDate, slot);
+                                const blocked = Boolean(slotStatus) || past;
+                                const selected = selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
+                                return (
+                                  <button
+                                    key={`${seatId}-${slot.startTime}`}
+                                    type="button"
+                                    disabled={blocked}
+                                    onClick={() => setSelectedSlot(slot)}
+                                    title={past ? 'This time slot has already started' : undefined}
+                                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-100 ${getSlotStateClasses(slotStatus, selected, past)}`}
+                                  >
+                                    {slot.startTime} - {slot.endTime}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              <label className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={acceptedBookingPolicy}
+                  onChange={(event) => setAcceptedBookingPolicy(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>
+                  I agree to the booking terms and cancellation policy. Cancellations must be made at least
+                  <strong> 3 hours before </strong>
+                  the booking start time.
+                </span>
+              </label>
+            </div>
+
+            <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3">
+              <button onClick={closeBookingModal} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+                Cancel
+              </button>
+              <button
+                onClick={submitBookingRequest}
+                disabled={bookingLoading || !acceptedBookingPolicy}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2 font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+              >
+                {bookingLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Request Booking
               </button>
             </div>
           </div>
@@ -668,10 +1240,13 @@ const StudentResourceView = () => {
 // Resource Card Component (Grid View)
 const ResourceCard = ({ 
   resource, isFavorite, onViewDetails, onToggleFavorite,
-  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getOccupancyRate, getTodayHours 
+  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getOccupancyRate, getTodayHours,
+  isResourceBookable, getResourceStatusLabel, getResourceStatusClasses, onBook
 }) => {
+  const bookable = isResourceBookable(resource);
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 group">
+    <div className="bg-primary rounded-xl shadow-[0_18px_45px_rgba(15,23,42,0.18)] border border-white/10 overflow-hidden hover:shadow-[0_22px_55px_rgba(15,23,42,0.24)] transition-all duration-200 group text-white">
       <div className="relative h-48 overflow-hidden">
         <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
           {getResourceTypeIcon(resource.type)}
@@ -694,23 +1269,35 @@ const ResourceCard = ({
             {resource.type.replace('_', ' ')}
           </span>
         </div>
+        {!bookable && (
+          <div className="absolute bottom-3 right-3">
+            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getResourceStatusClasses(resource.status)}`}>
+              {getResourceStatusLabel(resource.status)}
+            </span>
+          </div>
+        )}
       </div>
       
       <div className="p-4">
-        <h3 className="font-bold text-slate-800 text-lg mb-1 line-clamp-1">{resource.name}</h3>
+        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">{resource.name}</h3>
         <div className="flex items-center gap-2 mb-2">
-          <MapPin className="w-3 h-3 text-slate-400" />
-          <p className="text-xs text-slate-500">{resource.location}</p>
+          <MapPin className="w-3 h-3 text-slate-300" />
+          <p className="text-xs text-slate-300">{resource.location}</p>
         </div>
-        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{resource.description}</p>
+        <p className="text-sm text-slate-300 mb-3 line-clamp-2">{resource.description}</p>
+        {!bookable && (
+          <p className="mb-3 rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
+            Not available for booking right now.
+          </p>
+        )}
         
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-            <span className="text-sm font-medium text-slate-700">{resource.rating}</span>
+            <span className="text-sm font-medium text-slate-200">{resource.rating}</span>
             <span className="text-xs text-slate-400">({resource.reviews})</span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-slate-500">
+          <div className="flex items-center gap-1 text-xs text-slate-300">
             <Clock className="w-3 h-3" />
             <span>{getTodayHours(resource.availabilityWindows)}</span>
           </div>
@@ -718,11 +1305,11 @@ const ResourceCard = ({
         
         {resource.seatingLayout && (
           <div className="mb-3">
-            <div className="flex justify-between text-xs text-slate-600 mb-1">
+            <div className="flex justify-between text-xs text-slate-300 mb-1">
               <span>Available Seats</span>
               <span>{getAvailableSeatsCount(resource)} / {resource.seatingLayout.seats.length}</span>
             </div>
-            <div className="w-full bg-slate-200 rounded-full h-1.5">
+            <div className="w-full bg-white/10 rounded-full h-1.5">
               <div 
                 className="bg-emerald-500 h-1.5 rounded-full transition-all"
                 style={{ width: `${(getAvailableSeatsCount(resource) / resource.seatingLayout.seats.length) * 100}%` }}
@@ -731,17 +1318,21 @@ const ResourceCard = ({
           </div>
         )}
         
-        <div className="flex gap-2 pt-3 border-t border-slate-100">
+        <div className="flex gap-2 pt-3 border-t border-white/10">
           <button
             onClick={onViewDetails}
-            className="flex-1 px-3 py-2 text-sm text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+            className="flex-1 px-3 py-2 text-sm text-white bg-white/10 hover:bg-white/15 rounded-lg transition-colors flex items-center justify-center gap-1"
           >
             <Eye className="w-4 h-4" />
             View Details
           </button>
-          <button className="px-3 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-1">
+          <button
+            onClick={onBook}
+            disabled={!bookable}
+            className="px-3 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center justify-center gap-1 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:text-slate-300"
+          >
             <Calendar className="w-4 h-4" />
-            Book
+            {bookable ? 'Book' : 'Unavailable'}
           </button>
         </div>
       </div>
@@ -752,10 +1343,13 @@ const ResourceCard = ({
 // Resource List Item Component (List View)
 const ResourceListItem = ({ 
   resource, isFavorite, onViewDetails, onToggleFavorite,
-  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getTodayHours 
+  getResourceTypeIcon, getResourceTypeColor, getAvailableSeatsCount, getTodayHours,
+  isResourceBookable, getResourceStatusLabel, getResourceStatusClasses, onBook
 }) => {
+  const bookable = isResourceBookable(resource);
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-all duration-200">
+    <div className="bg-primary rounded-xl shadow-[0_18px_45px_rgba(15,23,42,0.18)] border border-white/10 p-4 hover:shadow-[0_22px_55px_rgba(15,23,42,0.24)] transition-all duration-200 text-white">
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative md:w-48 h-32 rounded-lg overflow-hidden flex-shrink-0">
           <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-700">
@@ -769,18 +1363,23 @@ const ResourceListItem = ({
         <div className="flex-1">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-bold text-slate-800 text-lg">{resource.name}</h3>
+              <h3 className="font-bold text-white text-lg">{resource.name}</h3>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${getResourceTypeColor(resource.type)}`}>
                   {resource.type.replace('_', ' ')}
                 </span>
+                {!bookable && (
+                  <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${getResourceStatusClasses(resource.status)}`}>
+                    {getResourceStatusLabel(resource.status)}
+                  </span>
+                )}
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                  <span className="text-sm text-slate-600">{resource.rating}</span>
+                  <span className="text-sm text-slate-300">{resource.rating}</span>
                 </div>
               </div>
             </div>
-            <button onClick={onToggleFavorite} className="p-1.5 hover:bg-slate-100 rounded-lg">
+            <button onClick={onToggleFavorite} className="p-1.5 hover:bg-white/10 rounded-lg">
               {isFavorite ? (
                 <Heart className="w-5 h-5 text-red-500 fill-red-500" />
               ) : (
@@ -789,9 +1388,14 @@ const ResourceListItem = ({
             </button>
           </div>
           
-          <p className="text-sm text-slate-600 mt-2 line-clamp-2">{resource.description}</p>
+          <p className="text-sm text-slate-300 mt-2 line-clamp-2">{resource.description}</p>
+          {!bookable && (
+            <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
+              Not available for booking right now.
+            </p>
+          )}
           
-          <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-500">
+          <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-300">
             <div className="flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               <span>{resource.location}</span>
@@ -814,17 +1418,21 @@ const ResourceListItem = ({
             )}
           </div>
           
-          <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+          <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">
             <button
               onClick={onViewDetails}
-              className="px-3 py-1.5 text-sm text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center gap-1"
+              className="px-3 py-1.5 text-sm text-white bg-white/10 hover:bg-white/15 rounded-lg transition-colors flex items-center gap-1"
             >
               <Eye className="w-4 h-4" />
               View Details
             </button>
-            <button className="px-3 py-1.5 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center gap-1">
+            <button
+              onClick={onBook}
+              disabled={!bookable}
+              className="px-3 py-1.5 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex items-center gap-1 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:text-slate-300"
+            >
               <Calendar className="w-4 h-4" />
-              Book Now
+              {bookable ? 'Book Now' : 'Unavailable'}
             </button>
           </div>
         </div>
@@ -834,3 +1442,4 @@ const ResourceListItem = ({
 };
 
 export default StudentResourceView;
+

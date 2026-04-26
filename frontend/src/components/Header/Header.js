@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
+const NOTIFICATION_API_BASE = "http://localhost:8082";
+
 function formatPhoneForInput(phone) {
   if (!phone) {
     return "";
@@ -140,8 +142,113 @@ function formatNotificationType(type) {
       return "Admin Review";
     case "GENERAL":
       return "Welcome";
+    case "BOOKING_CREATED":
+    case "ADMIN_BOOKING_CREATED":
+      return "Booking";
+    case "BOOKING_APPROVED":
+      return "Booking Approved";
+    case "BOOKING_REJECTED":
+      return "Booking Rejected";
+    case "BOOKING_CANCELLED":
+    case "ADMIN_BOOKING_CANCELLED":
+      return "Booking Cancelled";
+    case "BOOKING_RESCHEDULED":
+    case "ADMIN_BOOKING_RESCHEDULED":
+      return "Booking Rescheduled";
+    case "TICKET_CREATED":
+    case "ADMIN_TICKET_CREATED":
+      return "Support Ticket";
+    case "TICKET_STATUS_CHANGED":
+      return "Ticket Status";
+    case "TICKET_ASSIGNED":
+      return "Assignment";
+    case "TECHNICIAN_TICKET_ASSIGNED":
+      return "Work Queue";
+    case "TICKET_COMMENT_ADDED":
+    case "TECHNICIAN_TICKET_COMMENT_ADDED":
+    case "ADMIN_TICKET_COMMENT_ADDED":
+      return "Ticket Comment";
+    case "ADMIN_TICKET_REOPENED":
+    case "TECHNICIAN_TICKET_REOPENED":
+      return "Reopened Ticket";
+    case "ADMIN_TICKET_CONFIRMED":
+    case "TECHNICIAN_TICKET_CONFIRMED":
+      return "Resolution";
+    case "RESOURCE_CREATED":
+      return "New Resource";
+    case "RESOURCE_UPDATED":
+      return "Resource Update";
+    case "RESOURCE_DELETED":
+      return "Resource Removed";
     default:
       return "Update";
+  }
+}
+
+function sortNotifications(notifications) {
+  return [...notifications].sort((left, right) => {
+    const leftTime = new Date(left?.createdAt ?? 0).getTime();
+    const rightTime = new Date(right?.createdAt ?? 0).getTime();
+    return rightTime - leftTime;
+  });
+}
+
+function upsertNotification(currentNotifications, incomingNotification) {
+  if (!incomingNotification?.id) {
+    return currentNotifications;
+  }
+
+  const existingIndex = currentNotifications.findIndex((notification) => notification.id === incomingNotification.id);
+  if (existingIndex === -1) {
+    return sortNotifications([incomingNotification, ...currentNotifications]);
+  }
+
+  const nextNotifications = [...currentNotifications];
+  nextNotifications[existingIndex] = {
+    ...nextNotifications[existingIndex],
+    ...incomingNotification,
+  };
+  return sortNotifications(nextNotifications);
+}
+
+function markNotificationsRead(currentNotifications, notificationIds) {
+  if (!Array.isArray(notificationIds) || !notificationIds.length) {
+    return currentNotifications;
+  }
+
+  const readIds = new Set(notificationIds);
+  return currentNotifications.map((notification) =>
+    readIds.has(notification.id)
+      ? {
+          ...notification,
+          read: true,
+        }
+      : notification
+  );
+}
+
+function showToast(setActiveToast, notification) {
+  if (!notification?.id || notification.read) {
+    return;
+  }
+
+  setActiveToast({
+    id: notification.id,
+    title: notification.title,
+    message: notification.message,
+    type: notification.type,
+  });
+
+  window.setTimeout(() => {
+    setActiveToast((current) => (current?.id === notification.id ? null : current));
+  }, 6000);
+}
+
+function safeParseNotificationEvent(rawValue) {
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    return null;
   }
 }
 
@@ -173,7 +280,9 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [notificationError, setNotificationError] = useState("");
+  const [activeToast, setActiveToast] = useState(null);
   const notificationPanelRef = useRef(null);
+  const notificationStreamRef = useRef(null);
 
   useEffect(() => {
     const nextProfile = createInitialProfile(user);
@@ -202,11 +311,54 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     }
 
     loadNotifications({ silent: true });
-    const intervalId = window.setInterval(() => {
-      loadNotifications({ silent: true });
-    }, 30000);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return undefined;
+    }
 
-    return () => window.clearInterval(intervalId);
+    const stream = new EventSource(
+      `${NOTIFICATION_API_BASE}/notifications/stream?token=${encodeURIComponent(token)}`
+    );
+    notificationStreamRef.current = stream;
+
+    stream.addEventListener("connected", () => {
+      setNotificationError("");
+    });
+
+    stream.addEventListener("notification-created", (event) => {
+      const payload = safeParseNotificationEvent(event.data);
+      const incomingNotification = payload?.notification;
+      if (!incomingNotification) {
+        return;
+      }
+
+      setNotifications((current) => upsertNotification(current, incomingNotification));
+      showToast(setActiveToast, incomingNotification);
+    });
+
+    stream.addEventListener("notification-updated", (event) => {
+      const payload = safeParseNotificationEvent(event.data);
+      const incomingNotification = payload?.notification;
+      if (!incomingNotification) {
+        return;
+      }
+
+      setNotifications((current) => upsertNotification(current, incomingNotification));
+    });
+
+    stream.addEventListener("notifications-read-all", (event) => {
+      const payload = safeParseNotificationEvent(event.data);
+      setNotifications((current) => markNotificationsRead(current, payload?.notificationIds));
+    });
+
+    stream.onerror = () => {
+      setNotificationError("Live notification connection was interrupted. Reconnecting...");
+    };
+
+    return () => {
+      stream.close();
+      notificationStreamRef.current = null;
+    };
   }, [profileUser.id]);
 
   const loadNotifications = async ({ silent = false } = {}) => {
@@ -221,7 +373,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setNotificationError("");
 
     try {
-      const response = await fetch("http://localhost:8082/notifications", {
+      const response = await fetch(`${NOTIFICATION_API_BASE}/notifications`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -233,7 +385,8 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
         throw new Error(message);
       }
 
-      setNotifications(Array.isArray(data) ? data : []);
+      const newNotifications = Array.isArray(data) ? sortNotifications(data) : [];
+      setNotifications(newNotifications);
     } catch (loadError) {
       if (!silent) {
         setNotificationError(loadError.message || "Something went wrong.");
@@ -275,7 +428,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     }
 
     try {
-      const response = await fetch(`http://localhost:8082/notifications/${notificationId}/read`, {
+      const response = await fetch(`${NOTIFICATION_API_BASE}/notifications/${notificationId}/read`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -310,7 +463,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     }
 
     try {
-      const response = await fetch("http://localhost:8082/notifications/read-all", {
+      const response = await fetch(`${NOTIFICATION_API_BASE}/notifications/read-all`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -374,7 +527,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
         throw new Error(phoneHelpText);
       }
 
-      const response = await fetch(`http://localhost:8082/users/${profileUser.id}`, {
+      const response = await fetch(`${NOTIFICATION_API_BASE}/users/${profileUser.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -446,7 +599,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setPasswordSuccess("");
 
     try {
-      const response = await fetch(`http://localhost:8082/users/${profileUser.id}/password`, {
+      const response = await fetch(`${NOTIFICATION_API_BASE}/users/${profileUser.id}/password`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -500,7 +653,7 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
     setProfileSuccess("");
 
     try {
-      const response = await fetch(`http://localhost:8082/users/${profileUser.id}`, {
+      const response = await fetch(`${NOTIFICATION_API_BASE}/users/${profileUser.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -658,6 +811,33 @@ function Header({ title, user, roleLabel, onLogout, onUserUpdated, onDeleteAccou
           </button>
         </div>
       </header>
+
+      {/* Toast Notification */}
+      {activeToast && (
+        <div className="fixed bottom-6 right-6 z-[100] animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="flex w-[min(90vw,22rem)] items-start gap-4 rounded-3xl border border-white/50 bg-primary/95 p-5 text-white shadow-[0_24px_50px_rgba(15,23,42,0.3)] backdrop-blur">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+                <path d="M10 20a2 2 0 0 0 4 0" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold tracking-wide">{activeToast.title}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-slate-300">{activeToast.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveToast(null)}
+              className="shrink-0 text-slate-400 hover:text-white"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {isProfileOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-primary/20 px-4 py-6 backdrop-blur-sm" role="presentation">

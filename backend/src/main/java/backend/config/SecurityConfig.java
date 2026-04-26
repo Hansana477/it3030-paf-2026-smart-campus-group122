@@ -45,13 +45,27 @@ public class SecurityConfig {
                                 "/users/reset-password"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/notifications/stream").permitAll()
                         .requestMatchers(HttpMethod.GET, "/resources", "/resources/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/reviews/resource/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/resources/images").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/resources").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/resources/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/resources/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/users/pending-technicians").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/users/*/approve").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/bookings/*/approve").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/bookings/*/reject").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/bookings/*/send-approval-email").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/tickets").hasRole("STUDENT")
+                        .requestMatchers(HttpMethod.GET, "/tickets/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/tickets/*/comments").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/tickets/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/tickets/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/tickets/*/assign").hasAnyRole("ADMIN", "TECHNICIAN")
+                        .requestMatchers(HttpMethod.PATCH, "/tickets/*/status").hasAnyRole("ADMIN", "TECHNICIAN")
+                        .requestMatchers(HttpMethod.PATCH, "/tickets/*/confirm-resolution").hasRole("STUDENT")
+                        .requestMatchers(HttpMethod.PATCH, "/tickets/*/reopen").hasAnyRole("STUDENT", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -67,7 +81,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://localhost:3001",
+                "http://127.0.0.1:3001"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

@@ -10,7 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 public class AdminAccountSeeder {
 
-    private static final String ADMIN_EMAIL = "admin@smartcampus.local";
+    private static final String ADMIN_EMAIL = "admin@uninex.local";
     private static final String ADMIN_PASSWORD = "Admin@1234";
 
     @Bean
@@ -31,3 +31,4 @@ public class AdminAccountSeeder {
         };
     }
 }
+
