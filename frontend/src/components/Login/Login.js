@@ -33,12 +33,12 @@ const passwordHelpText =
   "Password must include at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 symbol.";
 
 function getGoogleState() {
-  window.smartCampusGoogleSignIn = window.smartCampusGoogleSignIn || {
+  window.uniNexGoogleSignIn = window.uniNexGoogleSignIn || {
     initializedClientId: "",
     credentialHandler: null,
   };
 
-  return window.smartCampusGoogleSignIn;
+  return window.uniNexGoogleSignIn;
 }
 
 function redirectToDashboard(role, navigate, setError) {
@@ -224,9 +224,9 @@ function Login() {
         window.google.accounts.id.renderButton(buttonContainer, {
           theme: "outline",
           size: "large",
-          shape: "pill",
+          shape: "rectangular",
           text: "signin_with",
-          width: 360,
+          width: 400,
         });
       })
       .catch(() => {
@@ -586,12 +586,12 @@ function Login() {
         <section className="relative flex flex-col px-4 py-6 sm:px-10 sm:py-8 lg:px-12 lg:py-10">
           {/* Top Bar: Logo */}
           <div className="flex items-center justify-between">
-            <p className="text-xl font-black tracking-tight text-slate-900">SMARTCAMPUS</p>
+            <p className="text-xl font-black tracking-tight text-slate-900">UNINEX</p>
           </div>
 
           <div className="my-auto pt-10 pb-8 text-center sm:pt-16 sm:pb-12">
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Hi User</h1>
-            <p className="mt-3 text-sm font-medium text-slate-500">Welcome to SMARTCAMPUS</p>
+            <p className="mt-3 text-sm font-medium text-slate-500">Welcome to UniNex</p>
 
             <form className="mx-auto mt-10 w-full max-w-sm grid gap-4 text-left" onSubmit={handleSubmit}>
               <input
@@ -644,7 +644,7 @@ function Login() {
               </div>
 
               <div className="space-y-4">
-                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="w-full">
                   <div id="google-signin-button" className="flex justify-center [&>div]:!w-full [&_iframe]:!w-full" />
                 </div>
                 {isGoogleSubmitting ? (

@@ -257,6 +257,12 @@ public class UserController {
                 .orElseThrow(() -> new UserNotFoundException("Could not find user with email " + email));
     }
 
+    @GetMapping("/search")
+    public List<UserModel> searchUsersByEmail(@RequestParam String email, Authentication authentication) {
+        requireAdmin(authentication);
+        return userRepository.findByEmailContainingIgnoreCase(email.trim().toLowerCase());
+    }
+
     @GetMapping("/by-email-and-role")
     public UserModel getUserByEmailAndRole(
             @RequestParam String email,
