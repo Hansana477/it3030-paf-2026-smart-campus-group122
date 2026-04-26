@@ -239,6 +239,35 @@ function SiteHeader() {
     }
   };
 
+  const markNotificationAsRead = async (notificationId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${NOTIFICATION_API_BASE}/notifications/${notificationId}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || data?.error || "Failed to mark notification as read.");
+      }
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === notificationId ? { ...notification, read: true } : notification
+        )
+      );
+    } catch (error) {
+      setNotificationError(error.message || "Something went wrong.");
+    }
+  };
+
   const markAllNotificationsAsRead = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -567,11 +596,19 @@ function SiteHeader() {
 
                       <div className="space-y-3">
                         {notifications.slice(0, 8).map((notification) => (
-                          <article
+                          <button
                             key={notification.id}
-                            className={`rounded-2xl border px-4 py-4 ${
-                              notification.read ? "border-slate-200 bg-slate-50/70" : "border-accent/30 bg-accent/5"
+                            type="button"
+                            className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                              notification.read
+                                ? "border-slate-200 bg-slate-50/70"
+                                : "border-accent/30 bg-accent/5 shadow-[0_14px_28px_rgba(6,182,212,0.08)] hover:border-accent/50"
                             }`}
+                            onClick={() => {
+                              if (!notification.read) {
+                                markNotificationAsRead(notification.id);
+                              }
+                            }}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
@@ -585,7 +622,7 @@ function SiteHeader() {
                             <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
                               {formatNotificationTime(notification.createdAt)}
                             </p>
-                          </article>
+                          </button>
                         ))}
                       </div>
                     </div>

@@ -430,6 +430,10 @@ function Login() {
     setIsGoogleSubmitting(true);
 
     try {
+      if (selectedGoogleRole === "STUDENT" && !googleSignupData.email.endsWith("@my.sliit.lk")) {
+        throw new Error("Only @my.sliit.lk emails are allowed for the Student role.");
+      }
+
       const data = await completeGoogleLogin(googleSignupData.credential, selectedGoogleRole);
       saveAuthenticatedUser(data);
       setShowRolePicker(false);
@@ -741,6 +745,12 @@ function Login() {
                 </span>
               </label>
 
+              {error ? (
+                <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+                  {error}
+                </p>
+              ) : null}
+
               <div className="mt-3 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
@@ -748,6 +758,7 @@ function Login() {
                   onClick={() => {
                     setShowRolePicker(false);
                     setGoogleSignupData(initialGoogleSignup);
+                    setError("");
                   }}
                 >
                   Cancel
