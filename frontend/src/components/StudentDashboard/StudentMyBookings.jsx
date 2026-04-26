@@ -17,6 +17,7 @@ const StudentMyBookings = () => {
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [calendarDayModal, setCalendarDayModal] = useState(null);
+  const [reschedulingId, setReschedulingId] = useState('');
 
   const loadBookings = async () => {
     setLoading(true);
@@ -74,6 +75,8 @@ const StudentMyBookings = () => {
   };
 
   const openReschedule = async (booking) => {
+    if (reschedulingId) return;
+
     const confirmed = window.confirm(
       'Are you sure you want to reschedule this booking? Your current booking will be cancelled and you will need to make a new booking request.'
     );
@@ -82,6 +85,8 @@ const StudentMyBookings = () => {
       return;
     }
 
+    setReschedulingId(booking.id);
+    setMessage('Please wait while your booking is prepared for rescheduling...');
     try {
       const response = await fetch(`${API_BASE_URL}/bookings/${booking.id}/cancel`, {
         method: 'PATCH',
@@ -99,6 +104,7 @@ const StudentMyBookings = () => {
       navigate('/resources', { replace: true });
     } catch (error) {
       setMessage(error.message || 'Failed to cancel booking for reschedule');
+      setReschedulingId('');
     }
   };
 
@@ -465,11 +471,24 @@ const StudentMyBookings = () => {
                   )}
                   {['PENDING', 'APPROVED'].includes(booking.status) && resourceAvailability.available && (
                     <>
-                      <button onClick={() => openReschedule(booking)} className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 font-semibold text-emerald-700 hover:bg-emerald-100">
-                        <RefreshCw className="h-4 w-4" /> Reschedule
+                      <button
+                        onClick={() => openReschedule(booking)}
+                        disabled={Boolean(reschedulingId)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {reschedulingId === booking.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        {reschedulingId === booking.id ? 'Rescheduling...' : 'Reschedule'}
                       </button>
                       {canStudentCancel(booking) ? (
-                        <button onClick={() => cancelBooking(booking)} className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 font-semibold text-red-600 hover:bg-red-100">
+                        <button
+                          onClick={() => cancelBooking(booking)}
+                          disabled={Boolean(reschedulingId)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 font-semibold text-red-600 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
+                        >
                           <XCircle className="h-4 w-4" /> Cancel
                         </button>
                       ) : (
